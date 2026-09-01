@@ -1,4 +1,4 @@
-import { ScrollView, View, type ViewProps } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, View, type ViewProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TopBar } from './TopBar';
 
@@ -26,13 +26,18 @@ export function Screen({ scroll = true, onBack, topBarTitle, children, ...rest }
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       {onBack ? <TopBar onBack={onBack} title={topBarTitle} /> : null}
-      {scroll ? (
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
-          {content}
-        </ScrollView>
-      ) : (
-        content
-      )}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        {scroll ? (
+          <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+            {content}
+          </ScrollView>
+        ) : (
+          content
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

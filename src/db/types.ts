@@ -1,5 +1,6 @@
 export type BudgetMode = 'percent' | 'amount';
 export type SubcategoryStatus = 'unpaid' | 'partial' | 'paid';
+export type CategoryKind = 'expense' | 'debt' | 'saving';
 
 export interface Settings {
   id: number;
@@ -9,12 +10,14 @@ export interface Settings {
   currency_symbol: string;
   cycle_start_day: number;
   onboarded: number; // 0 | 1
+  last_backup_at: string | null;
 }
 
 export interface Category {
   id: number;
   name: string;
   color: string;
+  kind: CategoryKind;
   sort_order: number;
   is_default: number; // 0 | 1
   archived: number; // 0 | 1
@@ -78,7 +81,9 @@ export interface PeriodSummary {
   period: BudgetPeriod;
   totalAllocated: number;
   totalSpent: number;
-  totalRemaining: number;
+  totalRemaining: number; // "safe to spend" — allocated minus spent, can go negative
   overspend: number; // sum of max(0, spent-allocated) per category
   saved: number; // salary - totalSpent
+  toSavings: number; // sum of allocated amount across 'saving' kind categories
+  overCount: number; // number of categories spent past their allocation
 }

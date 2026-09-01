@@ -1,12 +1,13 @@
+import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { BackupPayload } from './format';
 
 export async function pickBackupFile(): Promise<BackupPayload | null> {
-  const picked = await File.pickFileAsync({ mimeTypes: ['application/json'] });
-  if (picked.canceled) return null;
+  const picked = await DocumentPicker.getDocumentAsync({ type: 'application/json' });
+  if (picked.canceled || !picked.assets[0]) return null;
 
-  const text = await picked.result.text();
+  const text = await new File(picked.assets[0].uri).text();
   const data = JSON.parse(text);
 
   if (typeof data.schemaVersion !== 'number' || !Array.isArray(data.categories)) {

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSQLiteContext } from 'expo-sqlite';
-import { getCategoriesWithProgress, getPeriodSummary } from '../db/repositories/aggregates';
+import { getCategoriesWithProgress, getDataStats, getHistoryTotals, getPeriodSummary } from '../db/repositories/aggregates';
 
 export function useCategoriesWithProgress(periodId: number | undefined) {
   const db = useSQLiteContext();
@@ -17,5 +17,21 @@ export function usePeriodSummary(periodId: number | undefined) {
     queryKey: ['periodSummary', periodId],
     queryFn: () => getPeriodSummary(db, periodId as number),
     enabled: periodId != null,
+  });
+}
+
+export function useHistoryTotals() {
+  const db = useSQLiteContext();
+  return useQuery({
+    queryKey: ['historyTotals'],
+    queryFn: () => getHistoryTotals(db),
+  });
+}
+
+export function useDataStats() {
+  const db = useSQLiteContext();
+  return useQuery({
+    queryKey: ['dataStats'],
+    queryFn: () => getDataStats(db),
   });
 }

@@ -7,7 +7,7 @@ import {
   unarchiveCategory,
   updateCategory,
 } from '../db/repositories/categories';
-import type { Category } from '../db/types';
+import type { Category, CategoryKind } from '../db/types';
 
 export function useCategories(includeArchived = false) {
   const db = useSQLiteContext();
@@ -21,7 +21,7 @@ export function useCreateCategory() {
   const db = useSQLiteContext();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; color: string }) => createCategory(db, data),
+    mutationFn: (data: { name: string; color: string; kind: CategoryKind }) => createCategory(db, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
   });
 }
@@ -30,7 +30,7 @@ export function useUpdateCategory() {
   const db = useSQLiteContext();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, patch }: { id: number; patch: Partial<Pick<Category, 'name' | 'color' | 'sort_order'>> }) =>
+    mutationFn: ({ id, patch }: { id: number; patch: Partial<Pick<Category, 'name' | 'color' | 'sort_order' | 'kind'>> }) =>
       updateCategory(db, id, patch),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
   });

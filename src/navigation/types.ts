@@ -7,11 +7,14 @@ export type RootStackParamList = {
   CategoryDetail: { categoryId: number; periodId: number };
   BudgetSetup: { mode: 'onboarding' | 'edit' | 'newMonth'; periodId?: number };
   HistoryDetail: { periodId: number };
+  CategoryManagement: undefined;
 };
 
 export type MainTabsParamList = {
   Dashboard: undefined;
+  Budget: undefined;
   History: undefined;
+  Data: undefined;
   Settings: undefined;
 };
 

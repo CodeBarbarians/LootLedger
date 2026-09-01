@@ -1,58 +1,58 @@
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Card } from '../components/Card';
-import { ScreenContainer } from '../components/ScreenContainer';
-import { Text } from '../components/Text';
+import { View } from 'react-native';
+import { HistoryCard } from '../components/app/HistoryCard';
+import { Screen } from '../components/app/Screen';
+import { SectionLabel } from '../components/app/SectionLabel';
+import { Text } from '../components/app/Text';
+import { useHistoryTotals } from '../hooks/useAggregates';
 import { usePeriods } from '../hooks/usePeriods';
 import { useSettings } from '../hooks/useSettings';
 import type { TabScreenProps } from '../navigation/types';
-import { colors, spacing } from '../theme';
+import { colors } from '../theme';
 import { formatAmount } from '../utils/currency';
-import { formatPeriodLabel } from '../utils/cycle';
-import { HistoryRowSummary } from '../components/HistoryRowSummary';
 
 type Props = TabScreenProps<'History'>;
 
 export function HistoryScreen({ navigation }: Props) {
   const { data: periods } = usePeriods();
   const { data: settings } = useSettings();
+  const { data: totals } = useHistoryTotals();
   const symbol = settings?.currency_symbol ?? 'Rs';
 
   return (
-    <ScreenContainer>
-      <Text variant="monoLabel" color={colors.accent}>
-        Past Cycles
-      </Text>
-      <Text variant="display" style={{ marginTop: spacing.sm, marginBottom: spacing.lg }}>
-        History
-      </Text>
+    <Screen>
+      <SectionLabel number="03" label="HISTORY" title="Month by month" />
+
+      <View className="flex-row gap-2.5 mb-4">
+        <View className="flex-1 rounded-[18px] border border-border bg-card px-4 py-3.5">
+          <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+            TOTAL SAVED
+          </Text>
+          <Text style={{ fontSize: 18, lineHeight: 23, fontWeight: '700', color: colors.success }} className="font-heading mt-1">
+            {formatAmount(totals?.totalSaved ?? 0, symbol)}
+          </Text>
+        </View>
+        <View className="flex-1 rounded-[18px] border border-border bg-card px-4 py-3.5">
+          <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+            TOTAL OVER
+          </Text>
+          <Text style={{ fontSize: 18, lineHeight: 23, fontWeight: '700', color: colors.danger }} className="font-heading mt-1">
+            {formatAmount(totals?.totalOver ?? 0, symbol)}
+          </Text>
+        </View>
+      </View>
 
       {(periods ?? []).length === 0 ? (
-        <Text variant="label" color={colors.textMuted}>
-          No past months yet — they'll show up here once a cycle ends.
-        </Text>
+        <Text variant="label">No past months yet — they&apos;ll show up here once a cycle ends.</Text>
       ) : null}
 
       {(periods ?? []).map((period) => (
-        <Pressable key={period.id} onPress={() => navigation.navigate('HistoryDetail', { periodId: period.id })}>
-          <Card style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text variant="subheading">{formatPeriodLabel(period.cycle_start_date)}</Text>
-              <Text variant="label" color={colors.textMuted} style={{ marginTop: 2 }}>
-                {formatAmount(period.salary_amount, symbol)} budgeted
-              </Text>
-            </View>
-            <HistoryRowSummary periodId={period.id} symbol={symbol} />
-          </Card>
-        </Pressable>
+        <HistoryCard
+          key={period.id}
+          period={period}
+          symbol={symbol}
+          onPress={() => navigation.navigate('HistoryDetail', { periodId: period.id })}
+        />
       ))}
-    </ScreenContainer>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-});

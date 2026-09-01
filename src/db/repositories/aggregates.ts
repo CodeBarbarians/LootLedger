@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { CategoryWithProgress, PeriodSummary } from '../types';
-import { getPeriod } from './periods';
+import { getPeriod, listPeriods } from './periods';
 
 export async function getCategoriesWithProgress(
   db: SQLiteDatabase,
@@ -8,7 +8,7 @@ export async function getCategoriesWithProgress(
 ): Promise<CategoryWithProgress[]> {
   return db.getAllAsync<CategoryWithProgress>(
     `SELECT
-       c.id, c.name, c.color, c.sort_order, c.is_default, c.archived,
+       c.id, c.name, c.color, c.kind, c.sort_order, c.is_default, c.archived,
        COALESCE(a.percent, NULL) as percent,
        COALESCE(a.amount_allocated, 0) as allocated,
        COALESCE(t.spent, 0) as spent,
@@ -38,6 +38,8 @@ export async function getPeriodSummary(
   const totalAllocated = categories.reduce((sum, c) => sum + c.allocated, 0);
   const totalSpent = categories.reduce((sum, c) => sum + c.spent, 0);
   const overspend = categories.reduce((sum, c) => sum + Math.max(0, c.spent - c.allocated), 0);
+  const toSavings = categories.filter((c) => c.kind === 'saving').reduce((sum, c) => sum + c.allocated, 0);
+  const overCount = categories.filter((c) => c.spent > c.allocated + 0.5).length;
 
   return {
     period,
@@ -46,5 +48,37 @@ export async function getPeriodSummary(
     totalRemaining: totalAllocated - totalSpent,
     overspend,
     saved: period.salary_amount - totalSpent,
+    toSavings,
+    overCount,
   };
+}
+
+export async function getDataStats(
+  db: SQLiteDatabase
+): Promise<{ categoryCount: number; transactionCount: number; periodCount: number }> {
+  const [cat, txn, per] = await Promise.all([
+    db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM categories WHERE archived = 0'),
+    db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM transactions'),
+    db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM budget_periods'),
+  ]);
+  return {
+    categoryCount: cat?.count ?? 0,
+    transactionCount: txn?.count ?? 0,
+    periodCount: per?.count ?? 0,
+  };
+}
+
+export async function getHistoryTotals(
+  db: SQLiteDatabase
+): Promise<{ totalSaved: number; totalOver: number }> {
+  const periods = await listPeriods(db);
+  let totalSaved = 0;
+  let totalOver = 0;
+  for (const p of periods) {
+    const summary = await getPeriodSummary(db, p.id);
+    if (!summary) continue;
+    totalSaved += Math.max(0, summary.saved);
+    totalOver += summary.overspend;
+  }
+  return { totalSaved, totalOver };
 }

@@ -1,5 +1,5 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativewind } = require('nativewind/metro');
 
 const config = getDefaultConfig(__dirname);
 
@@ -17,4 +17,4 @@ config.server.enhanceMiddleware = (middleware) => {
   };
 };
 
-module.exports = config;
+module.exports = withNativewind(config, { inlineRem: 16 });

@@ -1,0 +1,107 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+@import "nativewind/theme";
+
+/* ─── Code Barbarians brand tokens ────────────────────────────────
+   LootLedger is dark-only, so the same palette is used for the
+   light default, the OS dark-scheme block, and the .dark/.light
+   class overrides — there is no separate light theme to maintain. */
+@layer theme {
+  :root,
+  :root.light,
+  :root.dark {
+    --background: 15 13 10; /* #0F0D0A */
+    --background-deep: 10 9 7; /* #0a0907 */
+    --foreground: 244 239 230; /* #F4EFE6 textPrimary */
+
+    --card: 20 16 9; /* #141009 */
+    --card-foreground: 244 239 230;
+
+    --popover: 20 16 9; /* #141009 (bottom sheets) */
+    --popover-foreground: 244 239 230;
+
+    --primary: 255 90 31; /* #FF5A1F accent */
+    --primary-foreground: 15 13 10; /* #0F0D0A accentOn */
+
+    --secondary: 15 13 10; /* #0F0D0A cardInset */
+    --secondary-foreground: 244 239 230;
+
+    --muted: 15 13 10; /* #0F0D0A cardInset */
+    --muted-foreground: 124 116 107; /* #7c746b textMuted */
+
+    --accent: 15 13 10; /* #0F0D0A (subtle highlight bg) */
+    --accent-foreground: 244 239 230;
+
+    --destructive: 224 101 79; /* #e0654f danger */
+    --destructive-foreground: 15 13 10;
+
+    --success: 127 194 90; /* #7FC25A */
+    --success-foreground: 15 13 10;
+    --success-bg: 22 34 15; /* #16220f */
+    --success-border: 42 58 26; /* #2a3a1a */
+
+    --warning: 242 160 61; /* #F2A03D */
+    --warning-foreground: 15 13 10;
+    --warning-bg: 42 35 18; /* #2a2312 */
+    --warning-border: 74 63 30; /* #4a3f1e */
+
+    --info: 200 192 182; /* #C8C0B6 */
+    --info-foreground: 15 13 10;
+    --info-bg: 28 26 23; /* #1c1a17 */
+    --info-border: 58 53 45; /* #3a352d */
+
+    --border: 36 28 20; /* #241c14 */
+    --border-strong: 58 47 34; /* #3a2f22 */
+    --divider: 28 22 15; /* #1c160f */
+    --input: 58 47 34; /* #3a2f22 */
+    --ring: 255 90 31; /* #FF5A1F accent */
+
+    --faint: 95 88 80; /* #5f5850 textFaint */
+  }
+}
+
+@theme inline {
+  --color-primary: rgb(var(--primary));
+  --color-primary-foreground: rgb(var(--primary-foreground));
+  --color-card: rgb(var(--card));
+  --color-card-foreground: rgb(var(--card-foreground));
+  --color-secondary: rgb(var(--secondary));
+  --color-secondary-foreground: rgb(var(--secondary-foreground));
+  --color-background: rgb(var(--background));
+  --color-background-deep: rgb(var(--background-deep));
+  --color-popover: rgb(var(--popover));
+  --color-popover-foreground: rgb(var(--popover-foreground));
+  --color-muted: rgb(var(--muted));
+  --color-muted-foreground: rgb(var(--muted-foreground));
+  --color-destructive: rgb(var(--destructive));
+  --color-destructive-foreground: rgb(var(--destructive-foreground));
+  --color-success: rgb(var(--success));
+  --color-success-foreground: rgb(var(--success-foreground));
+  --color-success-bg: rgb(var(--success-bg));
+  --color-success-border: rgb(var(--success-border));
+  --color-warning: rgb(var(--warning));
+  --color-warning-foreground: rgb(var(--warning-foreground));
+  --color-warning-bg: rgb(var(--warning-bg));
+  --color-warning-border: rgb(var(--warning-border));
+  --color-info: rgb(var(--info));
+  --color-info-foreground: rgb(var(--info-foreground));
+  --color-info-bg: rgb(var(--info-bg));
+  --color-info-border: rgb(var(--info-border));
+  --color-foreground: rgb(var(--foreground));
+  --color-border: rgb(var(--border));
+  --color-border-strong: rgb(var(--border-strong));
+  --color-divider: rgb(var(--divider));
+  --color-input: rgb(var(--input));
+  --color-ring: rgb(var(--ring));
+  --color-accent: rgb(var(--accent));
+  --color-accent-foreground: rgb(var(--accent-foreground));
+  --color-faint: rgb(var(--faint));
+
+  --font-heading: "SpaceGrotesk_700Bold";
+  --font-heading-medium: "SpaceGrotesk_600SemiBold";
+  --font-body: "SpaceGrotesk_500Medium";
+  --font-body-regular: "SpaceGrotesk_400Regular";
+  --font-mono: "SpaceMono_400Regular";
+  --font-mono-bold: "SpaceMono_700Bold";
+}

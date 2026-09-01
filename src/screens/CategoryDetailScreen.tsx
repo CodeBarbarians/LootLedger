@@ -1,38 +1,30 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Button } from '../components/Button';
-import { Card } from '../components/Card';
-import { FieldInput } from '../components/FieldInput';
-import { ProgressBar } from '../components/ProgressBar';
-import { ScreenContainer } from '../components/ScreenContainer';
-import { StatusPill, type PillTone } from '../components/StatusPill';
-import { Text } from '../components/Text';
+import { Pressable, View } from 'react-native';
+import { AddExpenseSheet } from '../components/app/AddExpenseSheet';
+import { Bar } from '../components/app/Bar';
+import { CategoryFormSheet } from '../components/app/CategoryFormSheet';
+import { Screen } from '../components/app/Screen';
+import { Text } from '../components/app/Text';
+import type { Subcategory } from '../db/types';
 import { useCategoriesWithProgress } from '../hooks/useAggregates';
 import { useCategories } from '../hooks/useCategories';
+import { useSettings } from '../hooks/useSettings';
 import {
   useCreateSubcategory,
   useDeleteSubcategory,
   useMarkSubcategoryPaid,
-  usePaySubcategoryPartial,
   useSubcategories,
+  useUnpaySubcategory,
 } from '../hooks/useSubcategories';
-import { useAddTransaction, useDeleteTransaction, useTransactions } from '../hooks/useTransactions';
-import { useSettings } from '../hooks/useSettings';
+import { useDeleteTransaction, useTransactions } from '../hooks/useTransactions';
 import type { RootStackParamList } from '../navigation/types';
-import { colors, spacing } from '../theme';
-import type { Subcategory } from '../db/types';
-import { formatAmount } from '../utils/currency';
+import { colors } from '../theme';
+import { formatAmount, formatPercent } from '../utils/currency';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CategoryDetail'>;
 
-const STATUS_TONE: Record<Subcategory['status'], { label: string; tone: PillTone }> = {
-  unpaid: { label: 'Unpaid', tone: 'neutral' },
-  partial: { label: 'Partial', tone: 'warning' },
-  paid: { label: 'Paid', tone: 'success' },
-};
-
-export function CategoryDetailScreen({ route }: Props) {
+export function CategoryDetailScreen({ route, navigation }: Props) {
   const { categoryId, periodId } = route.params;
   const { data: settings } = useSettings();
   const { data: categories } = useCategories(true);
@@ -42,255 +34,186 @@ export function CategoryDetailScreen({ route }: Props) {
 
   const createSubcategory = useCreateSubcategory(periodId);
   const markPaid = useMarkSubcategoryPaid(periodId);
-  const payPartial = usePaySubcategoryPartial(periodId);
+  const unpaySubcategory = useUnpaySubcategory(periodId);
   const deleteSubcategory = useDeleteSubcategory(periodId);
-  const addTransaction = useAddTransaction(periodId);
   const deleteTransaction = useDeleteTransaction(periodId);
 
   const symbol = settings?.currency_symbol ?? 'Rs';
   const category = categories?.find((c) => c.id === categoryId);
   const progress = progressList?.find((c) => c.id === categoryId);
 
-  const [showAddSub, setShowAddSub] = useState(false);
-  const [subName, setSubName] = useState('');
-  const [subAmount, setSubAmount] = useState('');
-
+  const [showNewSub, setShowNewSub] = useState(false);
   const [showSpend, setShowSpend] = useState(false);
-  const [spendAmount, setSpendAmount] = useState('');
-  const [spendNote, setSpendNote] = useState('');
 
-  const [partialTargetId, setPartialTargetId] = useState<number | null>(null);
-  const [partialAmount, setPartialAmount] = useState('');
-
-  async function handleAddSubcategory() {
-    const amount = parseFloat(subAmount) || 0;
-    if (!subName.trim() || amount <= 0) return;
-    await createSubcategory.mutateAsync({ categoryId, name: subName.trim(), amountBudgeted: amount });
-    setSubName('');
-    setSubAmount('');
-    setShowAddSub(false);
-  }
-
-  async function handleLogSpend() {
-    const amount = parseFloat(spendAmount) || 0;
-    if (amount <= 0) return;
-    await addTransaction.mutateAsync({ categoryId, amount, note: spendNote.trim() || undefined });
-    setSpendAmount('');
-    setSpendNote('');
-    setShowSpend(false);
-  }
-
-  async function handlePartialPay(subcategoryId: number) {
-    const amount = parseFloat(partialAmount) || 0;
-    if (amount <= 0) return;
-    await payPartial.mutateAsync({ subcategoryId, amount });
-    setPartialAmount('');
-    setPartialTargetId(null);
-  }
-
+  const left = progress?.remaining ?? 0;
+  const over = left < -0.5;
   const fraction = progress && progress.allocated > 0 ? progress.spent / progress.allocated : 0;
-  const over = (progress?.spent ?? 0) > (progress?.allocated ?? 0);
+  const share = progress && settings ? (settings.salary_amount > 0 ? progress.allocated / settings.salary_amount : 0) : 0;
 
   return (
-    <ScreenContainer>
-      <View style={styles.headerRow}>
-        <View style={[styles.dot, { backgroundColor: category?.color ?? colors.accent }]} />
-        <Text variant="display">{category?.name ?? 'Category'}</Text>
+    <Screen onBack={() => navigation.goBack()}>
+      <View className="flex-row items-center gap-2.5">
+        <View className="h-2.5 w-2.5 rounded-[2px]" style={{ backgroundColor: category?.color ?? colors.accent }} />
+        <Text style={{ fontSize: 24, lineHeight: 29, fontWeight: '700', letterSpacing: -0.2 }} className="font-heading">
+          {category?.name ?? 'Category'}
+        </Text>
       </View>
 
-      <Card style={{ marginTop: spacing.lg }}>
-        <View style={styles.summaryRow}>
-          <SummaryStat label="Allocated" value={formatAmount(progress?.allocated ?? 0, symbol)} />
-          <SummaryStat label="Spent" value={formatAmount(progress?.spent ?? 0, symbol)} />
-          <SummaryStat
-            label={over ? 'Over' : 'Pending'}
-            value={formatAmount(Math.abs(progress?.remaining ?? 0), symbol)}
-            tone={over ? colors.danger : colors.success}
-          />
+      <View className="rounded-3xl border border-border bg-card p-5 mt-4">
+        <View className="flex-row justify-between items-end gap-2.5">
+          <View>
+            <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+              {over ? 'OVER BUDGET' : 'PENDING'}
+            </Text>
+            <Text
+              className="mt-1"
+              style={{ fontSize: 32, lineHeight: 39, fontWeight: '700', letterSpacing: -0.4, color: over ? colors.danger : colors.textPrimary }}
+            >
+              {formatAmount(Math.abs(left), symbol)}
+            </Text>
+          </View>
+          <View className="items-end">
+            <Text variant="mono" className="text-[10px] text-faint">
+              {formatPercent(share)} of salary
+            </Text>
+            <Text variant="mono" className="font-mono-bold text-[13px] mt-1">
+              {formatAmount(progress?.allocated ?? 0, symbol)}
+            </Text>
+          </View>
         </View>
-        <View style={{ marginTop: spacing.lg }}>
-          <ProgressBar fraction={fraction} />
+        <View className="mt-4">
+          <Bar fraction={fraction} height={8} color={over ? colors.danger : category?.color} />
         </View>
-      </Card>
+        <View className="flex-row justify-between mt-[9px]">
+          <Text variant="mono" className="text-[10px] text-faint">
+            {formatAmount(progress?.spent ?? 0, symbol)} spent
+          </Text>
+          <Text variant="mono" className="text-[10px] text-faint">
+            {progress && progress.allocated > 0 ? Math.round((progress.spent / progress.allocated) * 100) : 0}% used
+          </Text>
+        </View>
+      </View>
 
-      <View style={styles.sectionHeaderRow}>
-        <Text variant="monoLabel" color={colors.textFaint}>
-          Subcategories
-        </Text>
-        <Pressable onPress={() => setShowAddSub((v) => !v)}>
-          <Text variant="label" color={colors.accent}>
-            {showAddSub ? 'Cancel' : '+ Add'}
+      <View className="flex-row items-baseline justify-between mt-6 mb-2.5 px-0.5">
+        <Text variant="monoLabel">Subcategories</Text>
+        <Pressable onPress={() => setShowNewSub(true)}>
+          <Text variant="mono" className="font-mono-bold text-[11px] text-primary">
+            + ADD
           </Text>
         </Pressable>
       </View>
 
-      {showAddSub ? (
-        <Card style={{ marginBottom: spacing.md }}>
-          <FieldInput label="Name" placeholder="Pocket Money — Person 1" value={subName} onChangeText={setSubName} />
-          <View style={{ marginTop: spacing.md }}>
-            <FieldInput
-              label="Budgeted Amount"
-              keyboardType="decimal-pad"
-              prefix={symbol}
-              placeholder="0"
-              value={subAmount}
-              onChangeText={setSubAmount}
-            />
-          </View>
-          <Button label="Add Subcategory" onPress={handleAddSubcategory} style={{ marginTop: spacing.md }} />
-        </Card>
+      {(subcategories ?? []).length === 0 ? (
+        <View className="rounded-2xl border border-dashed border-border p-5 items-center">
+          <Text variant="mono" className="text-[11px] text-faint">
+            No subcategories yet
+          </Text>
+        </View>
       ) : null}
 
-      {(subcategories ?? []).length === 0 && !showAddSub ? (
-        <Text variant="label" color={colors.textMuted} style={{ marginBottom: spacing.lg }}>
-          No subcategories yet.
-        </Text>
-      ) : null}
-
-      {(subcategories ?? []).map((sub) => {
+      {(subcategories ?? []).map((sub: Subcategory) => {
+        const paid = sub.status === 'paid';
         const pending = sub.amount_budgeted - sub.amount_paid;
-        const tone = STATUS_TONE[sub.status];
         return (
-          <Card key={sub.id} style={styles.subCard}>
-            <View style={styles.subTopRow}>
-              <Text variant="body" style={{ flex: 1 }}>
+          <View key={sub.id} className="rounded-[18px] border border-border bg-card px-3.5 py-3.5 mb-2.5 flex-row items-center gap-2.5">
+            <View className="flex-1 min-w-0">
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: '600',
+                  color: paid ? colors.textMuted : colors.textPrimary,
+                  textDecorationLine: paid ? 'line-through' : 'none',
+                }}
+                numberOfLines={1}
+              >
                 {sub.name}
               </Text>
-              <StatusPill label={tone.label} tone={tone.tone} />
-            </View>
-            <View style={[styles.summaryRow, { marginTop: spacing.md }]}>
-              <Text variant="label">
-                Budgeted <Text variant="body">{formatAmount(sub.amount_budgeted, symbol)}</Text>
-              </Text>
-              <Text variant="label">
-                Pending <Text variant="body">{formatAmount(Math.max(0, pending), symbol)}</Text>
+              <Text variant="mono" className="text-[10px] text-faint mt-1">
+                {formatAmount(sub.amount_budgeted, symbol)} {paid ? '· paid' : sub.status === 'partial' ? `· ${formatAmount(pending, symbol)} left` : '· pending'}
               </Text>
             </View>
-
-            {sub.status !== 'paid' ? (
-              <View style={styles.subActionsRow}>
-                <Button
-                  label="Mark as Paid"
-                  variant="secondary"
-                  onPress={() => markPaid.mutate(sub.id)}
-                  style={{ flex: 1 }}
-                />
-                <Button
-                  label="Partial"
-                  variant="ghost"
-                  onPress={() => setPartialTargetId(partialTargetId === sub.id ? null : sub.id)}
-                  style={{ flex: 1 }}
-                />
-              </View>
-            ) : null}
-
-            {partialTargetId === sub.id ? (
-              <View style={{ marginTop: spacing.md }}>
-                <FieldInput
-                  keyboardType="decimal-pad"
-                  prefix={symbol}
-                  placeholder="Amount paid"
-                  value={partialAmount}
-                  onChangeText={setPartialAmount}
-                />
-                <Button
-                  label="Record Payment"
-                  onPress={() => handlePartialPay(sub.id)}
-                  style={{ marginTop: spacing.sm }}
-                />
-              </View>
-            ) : null}
-
-            <Pressable onPress={() => deleteSubcategory.mutate(sub.id)} style={{ marginTop: spacing.md }}>
-              <Text variant="label" color={colors.danger}>
-                Delete
+            <Pressable
+              onPress={() => (paid ? unpaySubcategory.mutate(sub.id) : markPaid.mutate(sub.id))}
+              className="rounded-full px-3.5 py-2.5 border"
+              style={{
+                backgroundColor: paid ? colors.success : 'transparent',
+                borderColor: paid ? colors.success : colors.borderStrong,
+              }}
+            >
+              <Text
+                variant="mono"
+                className="font-mono-bold text-[10px] tracking-wider"
+                style={{ color: paid ? colors.accentOn : colors.accent }}
+              >
+                {paid ? 'PAID' : 'MARK PAID'}
               </Text>
             </Pressable>
-          </Card>
+            <Pressable onPress={() => deleteSubcategory.mutate(sub.id)} hitSlop={8}>
+              <Text style={{ color: colors.borderStrong, fontSize: 15 }}>✕</Text>
+            </Pressable>
+          </View>
         );
       })}
 
-      <View style={styles.sectionHeaderRow}>
-        <Text variant="monoLabel" color={colors.textFaint}>
-          Transactions
-        </Text>
-        <Pressable onPress={() => setShowSpend((v) => !v)}>
-          <Text variant="label" color={colors.accent}>
-            {showSpend ? 'Cancel' : '+ Log a Spend'}
+      <View className="flex-row items-baseline justify-between mt-6 mb-2.5 px-0.5">
+        <Text variant="monoLabel">Spend log</Text>
+        <Pressable onPress={() => setShowSpend(true)}>
+          <Text variant="mono" className="font-mono-bold text-[11px] text-primary">
+            + SPEND
           </Text>
         </Pressable>
       </View>
 
-      {showSpend ? (
-        <Card style={{ marginBottom: spacing.md }}>
-          <FieldInput
-            label="Amount"
-            keyboardType="decimal-pad"
-            prefix={symbol}
-            placeholder="0"
-            value={spendAmount}
-            onChangeText={setSpendAmount}
-          />
-          <View style={{ marginTop: spacing.md }}>
-            <FieldInput label="Note (optional)" placeholder="What was it for?" value={spendNote} onChangeText={setSpendNote} />
-          </View>
-          <Button label="Log Spend" onPress={handleLogSpend} style={{ marginTop: spacing.md }} />
-        </Card>
-      ) : null}
-
-      {(transactions ?? []).length === 0 && !showSpend ? (
-        <Text variant="label" color={colors.textMuted}>
-          No spends logged yet.
-        </Text>
+      {(transactions ?? []).length === 0 ? (
+        <View className="rounded-2xl border border-dashed border-border p-5 items-center">
+          <Text variant="mono" className="text-[11px] text-faint">
+            Nothing spent from this category yet
+          </Text>
+        </View>
       ) : null}
 
       {(transactions ?? []).map((t) => (
-        <Card key={t.id} style={styles.txRow}>
-          <View style={{ flex: 1 }}>
-            <Text variant="body">{formatAmount(t.amount, symbol)}</Text>
-            {t.note ? (
-              <Text variant="label" color={colors.textMuted} style={{ marginTop: 2 }}>
-                {t.note}
-              </Text>
-            ) : null}
+        <View key={t.id} className="flex-row items-center gap-2.5 py-3.5 px-1 border-b border-divider">
+          <View className="flex-1 min-w-0">
+            <Text style={{ fontSize: 13, fontWeight: '600' }} numberOfLines={1}>
+              {t.note ?? category?.name ?? 'Expense'}
+            </Text>
+            <Text variant="mono" className="text-[10px] text-faint mt-0.5">
+              {new Date(t.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
+              {t.subcategory_id ? ' · subcategory' : ' · quick add'}
+            </Text>
           </View>
+          <Text variant="mono" className="font-mono-bold text-[13px]">
+            −{formatAmount(t.amount, symbol)}
+          </Text>
           {t.subcategory_id == null ? (
-            <Pressable onPress={() => deleteTransaction.mutate(t.id)}>
-              <Text variant="label" color={colors.danger}>
-                Delete
-              </Text>
+            <Pressable onPress={() => deleteTransaction.mutate(t.id)} hitSlop={8}>
+              <Text style={{ color: colors.borderStrong, fontSize: 13 }}>✕</Text>
             </Pressable>
           ) : null}
-        </Card>
+        </View>
       ))}
-    </ScreenContainer>
+
+      <CategoryFormSheet
+        isOpen={showNewSub}
+        onClose={() => setShowNewSub(false)}
+        mode="subcategory"
+        parentName={category?.name}
+        valueLabel={`PLANNED AMOUNT (${symbol})`}
+        namePlaceholder="e.g. Pocket money — Person 3"
+        onSubmit={async (data) => {
+          await createSubcategory.mutateAsync({ categoryId, name: data.name, amountBudgeted: data.value });
+        }}
+      />
+
+      <AddExpenseSheet
+        isOpen={showSpend}
+        onClose={() => setShowSpend(false)}
+        periodId={periodId}
+        categories={progressList ?? []}
+        currencySymbol={symbol}
+        initialCategoryId={categoryId}
+      />
+    </Screen>
   );
 }
-
-function SummaryStat({ label, value, tone }: { label: string; value: string; tone?: string }) {
-  return (
-    <View style={{ flex: 1 }}>
-      <Text variant="monoLabel">{label}</Text>
-      <Text variant="heading" color={tone} style={{ marginTop: 4 }}>
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  dot: { width: 14, height: 14, borderRadius: 7 },
-  summaryRow: { flexDirection: 'row', gap: spacing.lg },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.xxl,
-    marginBottom: spacing.md,
-  },
-  subCard: { marginBottom: spacing.md },
-  subTopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  subActionsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
-  txRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
-});

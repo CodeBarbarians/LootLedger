@@ -81,3 +81,14 @@ export async function markSubcategoryPaid(db: SQLiteDatabase, subcategoryId: num
   if (remaining <= 0) return;
   await paySubcategory(db, { subcategoryId, amount: remaining, note: 'Marked as paid' });
 }
+
+/** Reverts a subcategory back to unpaid: removes its payment transactions and resets amount_paid to 0. */
+export async function unpaySubcategory(db: SQLiteDatabase, subcategoryId: number): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM transactions WHERE subcategory_id = ?', [subcategoryId]);
+    await db.runAsync(
+      `UPDATE subcategories SET amount_paid = 0, status = 'unpaid', paid_at = NULL WHERE id = ?`,
+      [subcategoryId]
+    );
+  });
+}

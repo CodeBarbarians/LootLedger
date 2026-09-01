@@ -6,6 +6,7 @@ import {
   listSubcategoriesForCategory,
   markSubcategoryPaid,
   paySubcategory,
+  unpaySubcategory,
 } from '../db/repositories/subcategories';
 
 export function useSubcategories(periodId: number | undefined, categoryId: number | undefined) {
@@ -42,6 +43,15 @@ export function useMarkSubcategoryPaid(periodId: number | undefined) {
   const invalidate = useInvalidateAfterSpend(periodId);
   return useMutation({
     mutationFn: (subcategoryId: number) => markSubcategoryPaid(db, subcategoryId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUnpaySubcategory(periodId: number | undefined) {
+  const db = useSQLiteContext();
+  const invalidate = useInvalidateAfterSpend(periodId);
+  return useMutation({
+    mutationFn: (subcategoryId: number) => unpaySubcategory(db, subcategoryId),
     onSuccess: invalidate,
   });
 }

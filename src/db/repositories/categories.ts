@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { DEFAULT_CATEGORY_SEED } from '../schema';
-import type { Category } from '../types';
+import type { Category, CategoryKind } from '../types';
 
 export async function listCategories(
   db: SQLiteDatabase,
@@ -28,8 +28,8 @@ export async function seedDefaultCategoriesIfEmpty(db: SQLiteDatabase): Promise<
     for (let i = 0; i < DEFAULT_CATEGORY_SEED.length; i++) {
       const c = DEFAULT_CATEGORY_SEED[i];
       await db.runAsync(
-        'INSERT INTO categories (name, color, sort_order, is_default, archived) VALUES (?, ?, ?, 1, 0)',
-        [c.name, c.color, i]
+        'INSERT INTO categories (name, color, kind, sort_order, is_default, archived) VALUES (?, ?, ?, ?, 1, 0)',
+        [c.name, c.color, c.kind, i]
       );
     }
   });
@@ -37,15 +37,15 @@ export async function seedDefaultCategoriesIfEmpty(db: SQLiteDatabase): Promise<
 
 export async function createCategory(
   db: SQLiteDatabase,
-  data: { name: string; color: string }
+  data: { name: string; color: string; kind: CategoryKind }
 ): Promise<number> {
   const maxRow = await db.getFirstAsync<{ maxOrder: number | null }>(
     'SELECT MAX(sort_order) as maxOrder FROM categories'
   );
   const sortOrder = (maxRow?.maxOrder ?? -1) + 1;
   const result = await db.runAsync(
-    'INSERT INTO categories (name, color, sort_order, is_default, archived) VALUES (?, ?, ?, 0, 0)',
-    [data.name, data.color, sortOrder]
+    'INSERT INTO categories (name, color, kind, sort_order, is_default, archived) VALUES (?, ?, ?, ?, 0, 0)',
+    [data.name, data.color, data.kind, sortOrder]
   );
   return result.lastInsertRowId;
 }
@@ -53,7 +53,7 @@ export async function createCategory(
 export async function updateCategory(
   db: SQLiteDatabase,
   id: number,
-  patch: Partial<Pick<Category, 'name' | 'color' | 'sort_order'>>
+  patch: Partial<Pick<Category, 'name' | 'color' | 'sort_order' | 'kind'>>
 ): Promise<void> {
   const keys = Object.keys(patch) as (keyof typeof patch)[];
   if (keys.length === 0) return;

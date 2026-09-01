@@ -1,20 +1,18 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { StyleSheet, View } from 'react-native';
-import { Card } from '../components/Card';
-import { ProgressBar } from '../components/ProgressBar';
-import { ScreenContainer } from '../components/ScreenContainer';
-import { StatusPill } from '../components/StatusPill';
-import { Text } from '../components/Text';
+import { Pressable, View } from 'react-native';
+import { Bar } from '../components/app/Bar';
+import { Screen } from '../components/app/Screen';
+import { Text } from '../components/app/Text';
 import { useCategoriesWithProgress, usePeriodSummary } from '../hooks/useAggregates';
 import { useSettings } from '../hooks/useSettings';
 import type { RootStackParamList } from '../navigation/types';
-import { colors, spacing } from '../theme';
+import { colors } from '../theme';
 import { formatAmount } from '../utils/currency';
 import { formatPeriodLabel } from '../utils/cycle';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'HistoryDetail'>;
 
-export function HistoryDetailScreen({ route }: Props) {
+export function HistoryDetailScreen({ route, navigation }: Props) {
   const { periodId } = route.params;
   const { data: settings } = useSettings();
   const { data: summary } = usePeriodSummary(periodId);
@@ -23,93 +21,118 @@ export function HistoryDetailScreen({ route }: Props) {
 
   if (!summary) return null;
 
-  const overspent = summary.overspend > 0;
+  const saved = Math.max(0, summary.saved);
+  const overCats = (categories ?? []).filter((c) => c.spent > c.allocated + 0.5);
 
   return (
-    <ScreenContainer>
-      <Text variant="monoLabel" color={colors.accent}>
-        {formatPeriodLabel(summary.period.cycle_start_date)}
-      </Text>
-      <Text variant="display" style={{ marginTop: spacing.sm }}>
-        Month Summary
-      </Text>
+    <Screen onBack={() => navigation.goBack()} topBarTitle="History">
+      <View className="flex-row items-center justify-between">
+        <Text style={{ fontSize: 26, lineHeight: 32, fontWeight: '700', letterSpacing: -0.2 }} className="font-heading">
+          {formatPeriodLabel(summary.period.cycle_start_date)}
+        </Text>
+        <Pressable onPress={() => navigation.navigate('BudgetSetup', { mode: 'edit', periodId })}>
+          <Text variant="mono" className="font-mono-bold text-[11px] text-primary">
+            EDIT →
+          </Text>
+        </Pressable>
+      </View>
 
-      <Card style={{ marginTop: spacing.lg }}>
-        <View style={styles.summaryRow}>
-          <SummaryStat label="Amount" value={formatAmount(summary.period.salary_amount, symbol)} />
-          <SummaryStat label="Spent" value={formatAmount(summary.totalSpent, symbol)} />
+      <View className="flex-row gap-2.5 mt-4">
+        <View className="flex-1 rounded-[20px] border border-border bg-card p-4">
+          <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+            SAVED
+          </Text>
+          <Text style={{ fontSize: 20, lineHeight: 25, fontWeight: '700', color: colors.success }} className="font-heading mt-1.5">
+            {formatAmount(saved, symbol)}
+          </Text>
+          <Text variant="mono" className="text-[10px] text-faint mt-1">
+            {summary.period.salary_amount > 0 ? Math.round((saved / summary.period.salary_amount) * 100) : 0}% of salary
+          </Text>
         </View>
-        <View style={[styles.summaryRow, { marginTop: spacing.lg }]}>
-          <SummaryStat label="Allocated" value={formatAmount(summary.totalAllocated, symbol)} />
-          <SummaryStat
-            label="Remaining"
-            value={formatAmount(summary.totalRemaining, symbol)}
-            tone={summary.totalRemaining < 0 ? colors.danger : colors.success}
-          />
+        <View className="flex-1 rounded-[20px] border border-border bg-card p-4">
+          <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+            OVERSPENT
+          </Text>
+          <Text
+            style={{ fontSize: 20, lineHeight: 25, fontWeight: '700', color: summary.overspend > 0.5 ? colors.danger : colors.textMuted }}
+            className="font-heading mt-1.5"
+          >
+            {formatAmount(summary.overspend, symbol)}
+          </Text>
+          <Text variant="mono" className="text-[10px] text-faint mt-1">
+            {summary.overspend > 0.5 ? `across ${overCats.length} categories` : 'nothing over budget'}
+          </Text>
         </View>
+      </View>
 
-        <View style={{ marginTop: spacing.lg }}>
-          {overspent ? (
-            <StatusPill label={`Overspent by ${formatAmount(summary.overspend, symbol)}`} tone="danger" />
-          ) : (
-            <StatusPill label={`Saved ${formatAmount(Math.max(0, summary.saved), symbol)}`} tone="success" />
-          )}
+      <View className="rounded-[20px] border border-border bg-card px-[18px] py-4 mt-2.5 flex-row justify-between">
+        <View>
+          <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+            SALARY
+          </Text>
+          <Text variant="mono" className="font-mono-bold text-[13px] mt-1">
+            {formatAmount(summary.period.salary_amount, symbol)}
+          </Text>
         </View>
-      </Card>
+        <View>
+          <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+            ALLOTTED
+          </Text>
+          <Text variant="mono" className="font-mono-bold text-[13px] mt-1">
+            {formatAmount(summary.totalAllocated, symbol)}
+          </Text>
+        </View>
+        <View>
+          <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+            SPENT
+          </Text>
+          <Text variant="mono" className="font-mono-bold text-[13px] mt-1">
+            {formatAmount(summary.totalSpent, symbol)}
+          </Text>
+        </View>
+      </View>
 
-      <Text variant="monoLabel" color={colors.textFaint} style={{ marginTop: spacing.xxl, marginBottom: spacing.md }}>
-        Categories
+      <Text variant="monoLabel" className="mt-6 mb-2.5 px-0.5">
+        Per category
       </Text>
 
       {(categories ?? []).map((cat) => {
-        const fraction = cat.allocated > 0 ? cat.spent / cat.allocated : 0;
-        const over = cat.spent > cat.allocated;
+        const diff = cat.allocated - cat.spent;
+        const over = diff < -0.5;
         return (
-          <Card key={cat.id} style={styles.categoryCard}>
-            <View style={styles.categoryTopRow}>
-              <View style={[styles.dot, { backgroundColor: cat.color }]} />
-              <Text variant="subheading" style={{ flex: 1 }}>
+          <View key={cat.id} className="py-[13px] px-0.5 border-b border-divider">
+            <View className="flex-row items-center gap-[9px]">
+              <View className="h-2 w-2 rounded-[2px]" style={{ backgroundColor: cat.color }} />
+              <Text style={{ fontSize: 13, fontWeight: '600' }} className="flex-1" numberOfLines={1}>
                 {cat.name}
               </Text>
-            </View>
-            <View style={{ marginTop: spacing.md }}>
-              <ProgressBar fraction={fraction} />
-            </View>
-            <View style={[styles.summaryRow, { marginTop: spacing.md }]}>
-              <Text variant="label">
-                Allocated <Text variant="body">{formatAmount(cat.allocated, symbol)}</Text>
-              </Text>
-              <Text variant="label">
-                Spent <Text variant="body">{formatAmount(cat.spent, symbol)}</Text>
-              </Text>
-              <Text variant="label" color={over ? colors.danger : colors.textSecondary}>
-                {over ? 'Over' : 'Left'}{' '}
-                <Text variant="body" color={over ? colors.danger : colors.textPrimary}>
-                  {formatAmount(Math.abs(cat.remaining), symbol)}
-                </Text>
+              <Text
+                variant="mono"
+                className="font-mono-bold text-xs"
+                style={{ color: over ? colors.danger : colors.success }}
+              >
+                {diff < 0 ? '+' : '−'}
+                {formatAmount(diff, symbol)}
               </Text>
             </View>
-          </Card>
+            <View className="mt-[9px]">
+              <Bar
+                fraction={cat.allocated > 0 ? cat.spent / cat.allocated : 0}
+                height={5}
+                color={over ? colors.danger : cat.color}
+              />
+            </View>
+            <View className="flex-row justify-between mt-1.5">
+              <Text variant="mono" className="text-[10px] text-faint">
+                {formatAmount(cat.spent, symbol)} spent
+              </Text>
+              <Text variant="mono" className="text-[10px] text-faint">
+                {formatAmount(cat.allocated, symbol)} budget
+              </Text>
+            </View>
+          </View>
         );
       })}
-    </ScreenContainer>
+    </Screen>
   );
 }
-
-function SummaryStat({ label, value, tone }: { label: string; value: string; tone?: string }) {
-  return (
-    <View style={{ flex: 1 }}>
-      <Text variant="monoLabel">{label}</Text>
-      <Text variant="heading" color={tone} style={{ marginTop: 4 }}>
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  summaryRow: { flexDirection: 'row', gap: spacing.lg, flexWrap: 'wrap' },
-  categoryCard: { marginBottom: spacing.md },
-  categoryTopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-});

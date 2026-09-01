@@ -8,9 +8,11 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0f0d0a",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lootledger.app"
     },
     "android": {
+      "package": "com.lootledger.app",
       "adaptiveIcon": {
         "backgroundColor": "#0f0d0a",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -24,8 +26,12 @@
     },
     "plugins": [
       "expo-sqlite",
-      "expo-sharing",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "bb352e56-3cbd-49b3-ac64-8ead02400488"
+      }
+    }
   }
 }

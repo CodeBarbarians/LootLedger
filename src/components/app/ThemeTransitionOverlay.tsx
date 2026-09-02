@@ -16,21 +16,24 @@ import {
   runOnJS,
   useDerivedValue,
   useSharedValue,
-  withSequence,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import { subscribeThemeTransition, type ThemeTransitionJob } from './themeTransition';
+import { subscribeThemeTransition, waitForThemePaint, type ThemeTransitionJob } from './themeTransition';
 
 /** Collapse into the singularity, then blast the new theme back out. */
 const COLLAPSE_MS = 850;
 const RELEASE_MS = 850;
 /**
- * Dwell at full cover after the theme flips. Switching themes remounts the whole
- * navigation tree, which is the flicker this effect exists to hide — this hold
- * gives that remount room to finish before anything is uncovered again.
+ * Dwell at full cover after the theme flips, until the app reports it has actually
+ * repainted. Switching themes remounts the whole navigation tree — that repaint is
+ * the flicker this whole effect exists to hide, and how long it takes depends on
+ * the device and the screen, so it is waited for rather than guessed at. The floor
+ * keeps the beat at the singularity even when the repaint is instant; the ceiling
+ * stops a missing signal from stalling the animation.
  */
-const PEAK_HOLD_MS = 160;
+const MIN_PEAK_HOLD_MS = 120;
+const MAX_PEAK_HOLD_MS = 900;
 /** Progress value at the peak — the frame the theme actually changes on. */
 const PEAK = 0.5;
 
@@ -170,20 +173,49 @@ function Overlay({ job }: { job: ThemeTransitionJob }) {
       onDone();
       return;
     }
+    let cancelled = false;
+
+    // Split rather than one withSequence: the release can only start once the app
+    // behind the overlay has repainted, which is known on the JS thread, not here.
+    function handlePeak() {
+      if (cancelled) return;
+      onPeak();
+      // Drift on rather than freeze: the overlay is still solid black this side of
+      // the reveal, so the core keeps building instead of the effect stalling while
+      // the app rebuilds. Capped short of where the reveal would start uncovering.
+      progress.value = withTiming(PEAK + 0.06, {
+        duration: MAX_PEAK_HOLD_MS,
+        easing: Easing.linear,
+      });
+      Promise.all([
+        waitForThemePaint(MAX_PEAK_HOLD_MS),
+        new Promise((resolve) => setTimeout(resolve, MIN_PEAK_HOLD_MS)),
+      ]).then(() => {
+        if (cancelled) return;
+        // Decelerating out: the new theme is thrown back off the singularity.
+        progress.value = withTiming(
+          1,
+          { duration: RELEASE_MS, easing: Easing.out(Easing.cubic) },
+          (finished) => {
+            if (finished) runOnJS(onDone)();
+          }
+        );
+      });
+    }
+
     progress.value = 0;
-    progress.value = withSequence(
-      // Accelerating in: the screen falls into the singularity.
-      withTiming(PEAK, { duration: COLLAPSE_MS, easing: Easing.in(Easing.cubic) }, (finished) => {
-        if (finished) runOnJS(onPeak)();
-      }),
-      // Held, not paused: the screen is solid black at PEAK, so this reads as the
-      // beat before the explosion while the app rebuilds itself underneath.
-      withTiming(PEAK, { duration: PEAK_HOLD_MS }),
-      // Decelerating out: the new theme is thrown back off it.
-      withTiming(1, { duration: RELEASE_MS, easing: Easing.out(Easing.cubic) }, (finished) => {
-        if (finished) runOnJS(onDone)();
-      })
+    // Accelerating in: the screen falls into the singularity.
+    progress.value = withTiming(
+      PEAK,
+      { duration: COLLAPSE_MS, easing: Easing.in(Easing.cubic) },
+      (finished) => {
+        if (finished) runOnJS(handlePeak)();
+      }
     );
+
+    return () => {
+      cancelled = true;
+    };
   }, [onPeak, onDone, progress]);
 
   const uniforms = useDerivedValue(() => ({

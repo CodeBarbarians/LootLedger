@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Appearance, View } from 'react-native';
 import { useSettings } from '../../hooks/useSettings';
 import { applyColorTheme, colors, type ThemeMode } from '../../theme';
 import { LockScreen } from './LockScreen';
+import { notifyThemePainted } from './themeTransition';
 
 interface AppGateProps {
   onThemeModeChange: (mode: ThemeMode) => void;
@@ -28,11 +29,33 @@ export function AppGate({ onThemeModeChange, children }: AppGateProps) {
   if (settings && settings.theme_mode !== lastAppliedMode.current) {
     lastAppliedMode.current = settings.theme_mode;
     applyColorTheme(settings.theme_mode);
+    // NativeWind resolves its className colours from Appearance's colour scheme, so
+    // that has to flip in this same commit. Left to GluestackUIProvider's `mode`
+    // prop it lands a frame or two later — every className-styled surface then
+    // repaints after the inline `colors` ones, which reads as the theme flicker.
+    Appearance.setColorScheme(settings.theme_mode);
   }
 
+  const mode = settings?.theme_mode;
+
   useEffect(() => {
-    if (settings) onThemeModeChange(settings.theme_mode);
-  }, [settings, onThemeModeChange]);
+    if (mode) onThemeModeChange(mode);
+  }, [mode, onThemeModeChange]);
+
+  // Tell the theme transition when the new theme is actually on screen, so it can
+  // hold its cover until then instead of guessing a duration. Two frames: the
+  // first is scheduled before the repaint, the second lands after it.
+  useEffect(() => {
+    if (!mode) return;
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(notifyThemePainted);
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      if (second) cancelAnimationFrame(second);
+    };
+  }, [mode]);
 
   if (!settings) {
     return (

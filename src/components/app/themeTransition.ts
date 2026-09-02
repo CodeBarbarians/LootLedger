@@ -38,6 +38,35 @@ export interface ThemeTransitionJob {
  */
 const SAFETY_TIMEOUT_MS = 6000;
 
+let themePaintWaiter: (() => void) | null = null;
+
+/** Called by AppGate once the new theme has been rendered and painted. */
+export function notifyThemePainted() {
+  const waiter = themePaintWaiter;
+  themePaintWaiter = null;
+  waiter?.();
+}
+
+/**
+ * Resolves when the app reports it has repainted in the new theme, or after
+ * `timeoutMs` if that never arrives — the transition must never stall on a signal
+ * it may not get (theme write failed, no AppGate mounted).
+ */
+export function waitForThemePaint(timeoutMs: number) {
+  return new Promise<void>((resolve) => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (themePaintWaiter === done) themePaintWaiter = null;
+      resolve();
+    };
+    const timer = setTimeout(done, timeoutMs);
+    themePaintWaiter = done;
+  });
+}
+
 let snapshotTarget: RefObject<View | null> | null = null;
 let subscriber: ((job: ThemeTransitionJob | null) => void) | null = null;
 let running = false;

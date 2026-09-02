@@ -9,6 +9,13 @@ export type AccountType =
   | 'investment'
   | 'loan'
   | 'other';
+export type DebtKind =
+  | 'credit_card'
+  | 'personal_loan'
+  | 'student_loan'
+  | 'auto_loan'
+  | 'medical'
+  | 'other';
 
 export interface Settings {
   id: number;
@@ -102,6 +109,29 @@ export interface AccountBalanceSnapshot {
   account_id: number;
   balance: number;
   recorded_at: string;
+}
+
+export interface Debt {
+  id: number;
+  profile_id: number;
+  name: string;
+  kind: DebtKind;
+  principal_balance: number;
+  interest_rate_apr: number;
+  minimum_payment: number;
+  account_id: number | null;
+  archived: number; // 0 | 1
+  created_at: string;
+}
+
+export interface DebtPayment {
+  id: number;
+  debt_id: number;
+  amount: number;
+  principal_portion: number;
+  interest_portion: number;
+  note: string | null;
+  paid_at: string;
 }
 
 // Derived / joined shapes used by the UI layer

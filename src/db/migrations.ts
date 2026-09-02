@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { CREATE_TABLES_SQL } from './schema';
 
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -20,7 +20,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       `INSERT OR IGNORE INTO settings (id, active_profile_id, last_backup_at)
        VALUES (1, NULL, NULL)`
     );
-    currentVersion = 4;
+    currentVersion = 5;
   }
 
   if (currentVersion === 1) {
@@ -197,6 +197,39 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       'CREATE INDEX IF NOT EXISTS idx_account_balance_snapshots_account ON account_balance_snapshots(account_id)'
     );
     currentVersion = 4;
+  }
+
+  if (currentVersion === 4) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS debts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        profile_id INTEGER NOT NULL REFERENCES budget_profiles(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'credit_card',
+        principal_balance REAL NOT NULL DEFAULT 0,
+        interest_rate_apr REAL NOT NULL DEFAULT 0,
+        minimum_payment REAL NOT NULL DEFAULT 0,
+        account_id INTEGER REFERENCES accounts(id),
+        archived INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      )
+    `);
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS debt_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        debt_id INTEGER NOT NULL REFERENCES debts(id) ON DELETE CASCADE,
+        amount REAL NOT NULL,
+        principal_portion REAL NOT NULL DEFAULT 0,
+        interest_portion REAL NOT NULL DEFAULT 0,
+        note TEXT,
+        paid_at TEXT NOT NULL
+      )
+    `);
+    await db.execAsync('CREATE INDEX IF NOT EXISTS idx_debts_profile ON debts(profile_id)');
+    await db.execAsync(
+      'CREATE INDEX IF NOT EXISTS idx_debt_payments_debt ON debt_payments(debt_id)'
+    );
+    currentVersion = 5;
   }
 
   await db.execAsync(`PRAGMA user_version = ${DB_VERSION}`);

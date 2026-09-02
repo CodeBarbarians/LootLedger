@@ -1,3 +1,4 @@
+import * as LocalAuthentication from 'expo-local-authentication';
 import { Alert, Pressable, View } from 'react-native';
 import { CTAButton } from '../components/app/CTAButton';
 import { Screen } from '../components/app/Screen';
@@ -7,6 +8,7 @@ import { useToast } from '../components/app/Toast';
 import { useCurrentPeriod } from '../hooks/usePeriods';
 import { useActiveProfile, useUpdateProfile } from '../hooks/useProfiles';
 import { useResetToDefaultBudget } from '../hooks/useReset';
+import { useSettings, useUpdateSettings } from '../hooks/useSettings';
 import type { TabScreenProps } from '../navigation/types';
 import { colors } from '../theme';
 import { formatAmount } from '../utils/currency';
@@ -50,7 +52,9 @@ function Row({
 export function SettingsScreen({ navigation }: Props) {
   const { data: profile } = useActiveProfile();
   const { data: currentPeriod } = useCurrentPeriod(profile?.id, profile?.cycle_start_day ?? 1);
+  const { data: settings } = useSettings();
   const updateProfile = useUpdateProfile();
+  const updateSettings = useUpdateSettings();
   const resetToDefault = useResetToDefaultBudget(profile?.id as number);
   const { show } = useToast();
   const symbol = profile?.currency_symbol ?? 'Rs';
@@ -61,6 +65,32 @@ export function SettingsScreen({ navigation }: Props) {
       id: profile.id,
       patch: { budget_mode: profile.budget_mode === 'percent' ? 'amount' : 'percent' },
     });
+  }
+
+  function toggleTheme() {
+    if (!settings) return;
+    updateSettings.mutate({ theme_mode: settings.theme_mode === 'light' ? 'dark' : 'light' });
+  }
+
+  async function toggleBiometricLock() {
+    if (!settings) return;
+    const enabling = !settings.biometric_lock_enabled;
+    if (enabling) {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      if (!hasHardware) {
+        Alert.alert('Not available', 'This device has no biometric hardware.');
+        return;
+      }
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!isEnrolled) {
+        Alert.alert(
+          'Not set up',
+          'Set up a fingerprint, face, or device passcode in your phone settings first, then try again.'
+        );
+        return;
+      }
+    }
+    updateSettings.mutate({ biometric_lock_enabled: enabling ? 1 : 0 });
   }
 
   function confirmReset() {
@@ -139,6 +169,24 @@ export function SettingsScreen({ navigation }: Props) {
           value="→"
           valueColor={colors.accent}
           onPress={() => navigation.navigate('MasterData')}
+          last
+        />
+      </View>
+
+      <View className="rounded-[20px] border border-border bg-card overflow-hidden mt-4">
+        <Row
+          title="Theme"
+          subtitle="Dark or light peach"
+          value={settings?.theme_mode === 'light' ? 'LIGHT' : 'DARK'}
+          valueColor={colors.accent}
+          onPress={toggleTheme}
+        />
+        <Row
+          title="App lock"
+          subtitle="Require fingerprint or face to open"
+          value={settings?.biometric_lock_enabled ? 'ON' : 'OFF'}
+          valueColor={settings?.biometric_lock_enabled ? colors.success : colors.textMuted}
+          onPress={toggleBiometricLock}
           last
         />
       </View>

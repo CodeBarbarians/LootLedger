@@ -16,6 +16,7 @@ import { useBillsDueSoon } from '../hooks/useBills';
 import { useGoalsWithProgress } from '../hooks/useGoals';
 import { useCurrentPeriod } from '../hooks/usePeriods';
 import { useActiveProfile } from '../hooks/useProfiles';
+import { useSettings, useUpdateSettings } from '../hooks/useSettings';
 import type { TabScreenProps } from '../navigation/types';
 import { colors } from '../theme';
 import { formatAmount, formatPercent } from '../utils/currency';
@@ -33,6 +34,13 @@ export function DashboardScreen({ navigation }: Props) {
   const { data: goals } = useGoalsWithProgress(profile?.id);
   const symbol = profile?.currency_symbol ?? 'Rs';
   const [showAddExpense, setShowAddExpense] = useState(false);
+  const { data: settings } = useSettings();
+  const updateSettings = useUpdateSettings();
+
+  function toggleTheme() {
+    if (!settings) return;
+    updateSettings.mutate({ theme_mode: settings.theme_mode === 'light' ? 'dark' : 'light' });
+  }
 
   if (periodLoading) {
     return (
@@ -94,14 +102,25 @@ export function DashboardScreen({ navigation }: Props) {
             </Text>
           </View>
         </View>
-        <Pressable
-          onPress={() => navigation.navigate('BudgetSetup', { mode: 'edit', periodId: period.id })}
-          className="mt-1.5 rounded-full border border-border-strong px-3 py-2 active:border-primary"
-        >
-          <Text variant="mono" className="font-mono-bold text-[10px] tracking-wider text-primary">
-            {profile?.budget_mode === 'percent' ? '% MODE' : 'RS MODE'}
-          </Text>
-        </Pressable>
+        <View className="flex-row items-center gap-2 mt-1.5">
+          <Pressable
+            onPress={toggleTheme}
+            hitSlop={8}
+            className="rounded-full border border-border-strong px-3 py-2 active:border-primary"
+          >
+            <Text variant="mono" className="font-mono-bold text-[10px] tracking-wider text-primary">
+              {settings?.theme_mode === 'light' ? '☾' : '☀'}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate('BudgetSetup', { mode: 'edit', periodId: period.id })}
+            className="rounded-full border border-border-strong px-3 py-2 active:border-primary"
+          >
+            <Text variant="mono" className="font-mono-bold text-[10px] tracking-wider text-primary">
+              {profile?.budget_mode === 'percent' ? '% MODE' : 'RS MODE'}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <View className="rounded-3xl border border-border bg-card px-5 pt-[22px] pb-[18px]">

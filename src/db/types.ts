@@ -22,6 +22,8 @@ export interface Settings {
   id: number;
   active_profile_id: number | null;
   last_backup_at: string | null;
+  theme_mode: 'dark' | 'light';
+  biometric_lock_enabled: number;
 }
 
 export interface BudgetProfile {

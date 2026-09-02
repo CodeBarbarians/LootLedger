@@ -1,11 +1,16 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { CREATE_TABLES_SQL } from './schema';
 
-const DB_VERSION = 8;
+const DB_VERSION = 9;
+
+// TEMP DIAGNOSTIC INSTRUMENTATION — remove once the blank-screen-on-launch bug is found.
+const diag = (msg: string) => console.log(`[migrateDb ${Date.now()}] ${msg}`);
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
+  diag('enter migrateDbIfNeeded');
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   let currentVersion = row?.user_version ?? 0;
+  diag(`read user_version = ${currentVersion}`);
 
   // PRAGMA foreign_keys is per-connection and defaults OFF in SQLite, so it must be
   // turned on for every app launch's connection — not just the launch that runs a
@@ -13,28 +18,37 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   // (and the ON DELETE CASCADE clauses relied on elsewhere, e.g. resetToDefaultBudget)
   // silently never activates once the db is already at DB_VERSION.
   await db.execAsync('PRAGMA journal_mode = WAL');
+  diag('set journal_mode = WAL');
   await db.execAsync('PRAGMA foreign_keys = ON');
+  diag('set foreign_keys = ON');
 
   if (currentVersion >= DB_VERSION) {
+    diag('already at DB_VERSION, returning early');
     return;
   }
 
   if (currentVersion === 0) {
+    diag('fresh install: running CREATE_TABLES_SQL');
     await db.execAsync(CREATE_TABLES_SQL);
+    diag('fresh install: CREATE_TABLES_SQL done, seeding settings row');
     await db.runAsync(
       `INSERT OR IGNORE INTO settings (id, active_profile_id, last_backup_at)
        VALUES (1, NULL, NULL)`
     );
-    currentVersion = 8;
+    diag('fresh install: settings row seeded, done');
+    currentVersion = DB_VERSION;
   }
 
   if (currentVersion === 1) {
+    diag('starting v1->v2');
     await db.execAsync("ALTER TABLE categories ADD COLUMN kind TEXT NOT NULL DEFAULT 'expense'");
     await db.execAsync('ALTER TABLE settings ADD COLUMN last_backup_at TEXT');
+    diag('v1->v2 done');
     currentVersion = 2;
   }
 
   if (currentVersion === 2) {
+    diag('starting v2->v3 (multi-profile rebuild)');
     const existingSettings = await db.getFirstAsync<{
       salary_amount: number;
       budget_mode: string;
@@ -45,6 +59,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     }>(
       'SELECT salary_amount, budget_mode, currency_code, currency_symbol, cycle_start_day, onboarded FROM settings WHERE id = 1'
     );
+    diag(`v2->v3: read existing settings = ${JSON.stringify(existingSettings)}`);
 
     // The table rebuilds below drop and recreate `categories` and `budget_periods`
     // (both are FK parents of allocations/subcategories/transactions), so foreign key
@@ -53,8 +68,10 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     // PRAGMA foreign_keys can't be changed inside a transaction, so toggle it
     // around, not inside, withTransactionAsync.
     await db.execAsync('PRAGMA foreign_keys = OFF');
+    diag('v2->v3: foreign_keys OFF, entering transaction');
     try {
       await db.withTransactionAsync(async () => {
+        diag('v2->v3: inside transaction, creating budget_profiles');
         await db.execAsync(`
           CREATE TABLE IF NOT EXISTS budget_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,6 +104,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
           ]
         );
         const profileId = profileResult.lastInsertRowId;
+        diag(`v2->v3: created Personal profile id=${profileId}, rebuilding categories`);
 
         // Plain `ALTER TABLE ... ADD COLUMN profile_id` cannot make the column NOT NULL
         // (with the real per-row value), cannot add ON DELETE CASCADE to the new FK, and
@@ -115,6 +133,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         await db.execAsync('DROP TABLE categories');
         await db.execAsync('ALTER TABLE categories_new RENAME TO categories');
         await db.execAsync('CREATE INDEX IF NOT EXISTS idx_categories_profile ON categories(profile_id)');
+        diag('v2->v3: categories rebuilt, rebuilding budget_periods');
 
         await db.execAsync(`
           CREATE TABLE budget_periods_new (
@@ -140,6 +159,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         await db.execAsync(
           'CREATE INDEX IF NOT EXISTS idx_budget_periods_profile ON budget_periods(profile_id)'
         );
+        diag('v2->v3: budget_periods rebuilt, updating settings');
 
         await db.execAsync(
           'ALTER TABLE settings ADD COLUMN active_profile_id INTEGER REFERENCES budget_profiles(id)'
@@ -151,7 +171,9 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         await db.runAsync('INSERT OR IGNORE INTO settings (id) VALUES (1)');
         await db.runAsync('UPDATE settings SET active_profile_id = ? WHERE id = 1', [profileId]);
 
+        diag('v2->v3: settings updated, running foreign_key_check');
         const fkViolations = await db.getAllAsync('PRAGMA foreign_key_check');
+        diag(`v2->v3: foreign_key_check returned ${fkViolations.length} violations`);
         if (fkViolations.length > 0) {
           throw new Error(
             `Migration v2->v3 produced foreign key violations: ${JSON.stringify(fkViolations)}`
@@ -165,16 +187,20 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         // "duplicate column name" and breaking startup permanently. Hardcoded to 3 (not
         // DB_VERSION) — this step only finishes the v2->v3 rebuild; later steps still
         // need to run before the db is at DB_VERSION.
+        diag('v2->v3: bumping user_version to 3 inside transaction');
         await db.execAsync('PRAGMA user_version = 3');
       });
+      diag('v2->v3: transaction committed');
     } finally {
       await db.execAsync('PRAGMA foreign_keys = ON');
+      diag('v2->v3: foreign_keys restored to ON');
     }
 
     currentVersion = 3;
   }
 
   if (currentVersion === 3) {
+    diag('starting v3->v4 (accounts)');
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS accounts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -201,10 +227,12 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     await db.execAsync(
       'CREATE INDEX IF NOT EXISTS idx_account_balance_snapshots_account ON account_balance_snapshots(account_id)'
     );
+    diag('v3->v4 done');
     currentVersion = 4;
   }
 
   if (currentVersion === 4) {
+    diag('starting v4->v5 (debts)');
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS debts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -234,10 +262,12 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     await db.execAsync(
       'CREATE INDEX IF NOT EXISTS idx_debt_payments_debt ON debt_payments(debt_id)'
     );
+    diag('v4->v5 done');
     currentVersion = 5;
   }
 
   if (currentVersion === 5) {
+    diag('starting v5->v6 (bills)');
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS bills (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -267,10 +297,12 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     await db.execAsync(
       'CREATE INDEX IF NOT EXISTS idx_bill_payments_bill ON bill_payments(bill_id)'
     );
+    diag('v5->v6 done');
     currentVersion = 6;
   }
 
   if (currentVersion === 6) {
+    diag('starting v6->v7 (goals)');
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS goals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -296,10 +328,12 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     await db.execAsync(
       'CREATE INDEX IF NOT EXISTS idx_goal_contributions_goal ON goal_contributions(goal_id)'
     );
+    diag('v6->v7 done');
     currentVersion = 7;
   }
 
   if (currentVersion === 7) {
+    diag('starting v7->v8 (bills FK fix)');
     // bills.category_id previously had no ON DELETE clause (default RESTRICT), so once FK
     // enforcement is actually active, resetToDefaultBudget()'s `DELETE FROM categories` would
     // throw for any profile with a bill assigned to a category. Rebuild bills with
@@ -339,13 +373,25 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
           );
         }
 
+        diag('v7->v8: bumping user_version to 8 inside transaction');
         await db.execAsync('PRAGMA user_version = 8');
       });
+      diag('v7->v8: transaction committed');
     } finally {
       await db.execAsync('PRAGMA foreign_keys = ON');
     }
     currentVersion = 8;
   }
 
+  if (currentVersion === 8) {
+    diag('starting v8->v9 (theme + biometric lock settings)');
+    await db.execAsync("ALTER TABLE settings ADD COLUMN theme_mode TEXT NOT NULL DEFAULT 'dark'");
+    await db.execAsync('ALTER TABLE settings ADD COLUMN biometric_lock_enabled INTEGER NOT NULL DEFAULT 0');
+    diag('v8->v9 done');
+    currentVersion = 9;
+  }
+
+  diag('final PRAGMA user_version bump, migration complete');
   await db.execAsync(`PRAGMA user_version = ${DB_VERSION}`);
+  diag('migrateDbIfNeeded returning');
 }

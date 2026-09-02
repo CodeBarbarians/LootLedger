@@ -5,11 +5,14 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "backgroundColor": "#0f0d0a",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.lootledger.app"
+      "bundleIdentifier": "com.lootledger.app",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "LootLedger uses Face ID to unlock the app when the app lock setting is turned on."
+      }
     },
     "android": {
       "package": "com.lootledger.app",

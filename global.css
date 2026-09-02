@@ -4,13 +4,23 @@
 @import "nativewind/theme";
 
 /* ─── Code Barbarians brand tokens ────────────────────────────────
-   LootLedger is dark-only, so the same palette is used for the
-   light default, the OS dark-scheme block, and the .dark/.light
-   class overrides — there is no separate light theme to maintain. */
+   Dark is the original palette. Light is a "light peach" companion —
+   same brand accent, warm cream/peach surfaces instead of near-black.
+   Values here are kept in sync with src/theme/colors.ts by hand: this
+   file drives NativeWind `className` tokens (bg-background, etc.),
+   while colors.ts drives the many inline `style={{ color: colors.x }}`
+   usages — both must flip together when the theme mode changes.
+
+   React Native has no DOM, so a `:root.light`/`:root.dark` CLASS selector
+   (the web convention) never matches anything here — nothing in the tree
+   ever gets a literal `light`/`dark` className. react-native-css instead
+   resolves an actual `prefers-color-scheme` media condition against its
+   own `colorScheme` signal, which IS updated by `Appearance.setColorScheme()`
+   (called from GluestackUIProvider's `mode` prop). So dark lives in the
+   unconditional :root block below, and light overrides it via that media
+   query — not via a class selector. */
 @layer theme {
-  :root,
-  :root.light,
-  :root.dark {
+  :root {
     --background: 15 13 10; /* #0F0D0A */
     --background-deep: 10 9 7; /* #0a0907 */
     --foreground: 244 239 230; /* #F4EFE6 textPrimary */
@@ -58,6 +68,60 @@
     --ring: 255 90 31; /* #FF5A1F accent */
 
     --faint: 95 88 80; /* #5f5850 textFaint */
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  @layer theme {
+    :root {
+      --background: 251 241 228; /* #FBF1E4 */
+    --background-deep: 244 226 201; /* #F4E2C9 */
+    --foreground: 43 29 18; /* #2B1D12 textPrimary */
+
+    --card: 255 251 246; /* #FFFBF6 */
+    --card-foreground: 43 29 18;
+
+    --popover: 255 251 246; /* #FFFBF6 (bottom sheets) */
+    --popover-foreground: 43 29 18;
+
+    --primary: 255 90 31; /* #FF5A1F accent */
+    --primary-foreground: 15 13 10; /* #0F0D0A accentOn */
+
+    --secondary: 251 241 228; /* #FBF1E4 cardInset */
+    --secondary-foreground: 43 29 18;
+
+    --muted: 251 241 228; /* #FBF1E4 cardInset */
+    --muted-foreground: 138 122 102; /* #8A7A66 textMuted */
+
+    --accent: 251 241 228; /* #FBF1E4 (subtle highlight bg) */
+    --accent-foreground: 43 29 18;
+
+    --destructive: 209 79 58; /* #D14F3A danger */
+    --destructive-foreground: 15 13 10;
+
+    --success: 63 138 46; /* #3F8A2E */
+    --success-foreground: 15 13 10;
+    --success-bg: 227 240 217; /* #E3F0D9 */
+    --success-border: 195 222 176; /* #C3DEB0 */
+
+    --warning: 201 127 30; /* #C97F1E */
+    --warning-foreground: 15 13 10;
+    --warning-bg: 251 235 211; /* #FBEBD3 */
+    --warning-border: 239 208 156; /* #EFD09C */
+
+    --info: 107 93 78; /* #6B5D4E */
+    --info-foreground: 251 241 228;
+    --info-bg: 240 230 216; /* #F0E6D8 */
+    --info-border: 221 203 176; /* #DDCBB0 */
+
+    --border: 234 215 188; /* #EAD7BC */
+    --border-strong: 217 189 147; /* #D9BD93 */
+    --divider: 240 225 202; /* #F0E1CA */
+    --input: 217 189 147; /* #D9BD93 */
+    --ring: 255 90 31; /* #FF5A1F accent */
+
+    --faint: 168 152 128; /* #A89880 textFaint */
+    }
   }
 }
 

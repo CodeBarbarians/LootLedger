@@ -9,6 +9,7 @@ import { CategoryFormSheet } from '../components/app/CategoryFormSheet';
 import { DashedButton } from '../components/app/DashedButton';
 import { Pill } from '../components/app/Pill';
 import { Screen } from '../components/app/Screen';
+import { SegmentedTabs } from '../components/app/SegmentedTabs';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
 import { useToast } from '../components/app/Toast';
@@ -45,6 +46,15 @@ export function BudgetSetupScreen({ route, navigation }: Props) {
   const { mode, periodId } = route.params;
   const isOnboarding = mode === 'onboarding';
   const isCreatingProfile = mode === 'onboarding' || mode === 'newProfile';
+
+  // Onboarding runs above the tab navigator, so it lands on the tabs themselves.
+  // Every other mode runs inside a tab's own stack, whose root is the dashboard.
+  function goHome() {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: (isOnboarding ? 'MainTabs' : 'Dashboard') as 'Dashboard' }],
+    });
+  }
   const { show } = useToast();
   const db = useSQLiteContext();
   const queryClient = useQueryClient();
@@ -255,7 +265,7 @@ export function BudgetSetupScreen({ route, navigation }: Props) {
         await replaceAllocationsForPeriod(db, newPeriodId, allocations);
         queryClient.invalidateQueries();
 
-        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+        goHome();
         return;
       }
 
@@ -290,7 +300,7 @@ export function BudgetSetupScreen({ route, navigation }: Props) {
       if (mode === 'edit') {
         navigation.goBack();
       } else {
-        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+        goHome();
       }
     } catch (e) {
       show(e instanceof Error ? e.message : 'Something went wrong saving your budget');
@@ -391,20 +401,15 @@ export function BudgetSetupScreen({ route, navigation }: Props) {
         </View>
       </View>
 
-      <View className="flex-row gap-1.5 bg-card border border-border p-[5px] rounded-full mt-3">
-        <Pill
-          label="PERCENT"
-          className="flex-1"
-          active={budgetMode === 'percent'}
-          onPress={() => setBudgetMode('percent')}
-        />
-        <Pill
-          label="AMOUNT"
-          className="flex-1"
-          active={budgetMode === 'amount'}
-          onPress={() => setBudgetMode('amount')}
-        />
-      </View>
+      <SegmentedTabs
+        className="mt-3"
+        value={budgetMode}
+        onChange={setBudgetMode}
+        options={[
+          { value: 'percent', label: 'PERCENT' },
+          { value: 'amount', label: 'AMOUNT' },
+        ]}
+      />
       <Text variant="label" className="mt-2.5 px-1 leading-5">
         {budgetMode === 'percent'
           ? 'Percent mode: every category is a share of salary. Change your salary and all budgets follow automatically.'

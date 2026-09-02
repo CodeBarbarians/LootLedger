@@ -3,7 +3,7 @@ import { TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import type { CategoryKind } from '../../db/types';
 import { BottomSheet } from './BottomSheet';
 import { CTAButton } from './CTAButton';
-import { Pill } from './Pill';
+import { SegmentedTabs } from './SegmentedTabs';
 import { Text } from './Text';
 import { colors } from '../../theme';
 
@@ -97,22 +97,15 @@ export function CategoryFormSheet({
       </View>
 
       {mode === 'category' ? (
-        <View className="mt-2.5 flex-row gap-2">
-          <Pill
-            label="EXPENSE"
-            className="flex-1"
-            active={kind === 'expense'}
-            activeColor={colors.textPrimary}
-            onPress={() => setKind('expense')}
-          />
-          <Pill
-            label="SAVING"
-            className="flex-1"
-            active={kind === 'saving'}
-            activeColor={colors.success}
-            onPress={() => setKind('saving')}
-          />
-        </View>
+        <SegmentedTabs
+          className="mt-2.5"
+          value={kind}
+          onChange={setKind}
+          options={[
+            { value: 'expense', label: 'EXPENSE' },
+            { value: 'saving', label: 'SAVING', activeColor: colors.success },
+          ]}
+        />
       ) : null}
 
       <CTAButton

@@ -1,26 +1,17 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import type { ComponentType } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { AccountsScreen } from '../screens/AccountsScreen';
-import { BillsScreen } from '../screens/BillsScreen';
-import { BudgetProfilesScreen } from '../screens/BudgetProfilesScreen';
 import { BudgetSetupScreen } from '../screens/BudgetSetupScreen';
-import { CategoryDetailScreen } from '../screens/CategoryDetailScreen';
-import { CategoryManagementScreen } from '../screens/CategoryManagementScreen';
-import { DebtsScreen } from '../screens/DebtsScreen';
-import { GoalsScreen } from '../screens/GoalsScreen';
-import { HistoryDetailScreen } from '../screens/HistoryDetailScreen';
-import { MasterDataScreen } from '../screens/MasterDataScreen';
 import { useActiveProfile } from '../hooks/useProfiles';
 import { colors, useThemeRepaint } from '../theme';
 import { TabNavigator } from './TabNavigator';
-import type { RootStackParamList } from './types';
+import type { OuterStackParamList } from './types';
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const Stack = createNativeStackNavigator<OuterStackParamList>();
 
 export function RootNavigator() {
   useThemeRepaint();
   const { isLoading, needsOnboarding } = useActiveProfile();
-  console.log(`[RootNavigator] render isLoading=${isLoading} needsOnboarding=${needsOnboarding}`);
 
   // `initialRouteName` is only read once, on first mount — it must not be computed
   // from the active profile before that query has actually resolved, or the navigator
@@ -35,27 +26,22 @@ export function RootNavigator() {
 
   return (
     <Stack.Navigator
-      initialRouteName={needsOnboarding ? 'BudgetSetup' : 'MainTabs'}
+      initialRouteName={needsOnboarding ? 'Onboarding' : 'MainTabs'}
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.background },
       }}
     >
       <Stack.Screen name="MainTabs" component={TabNavigator} />
+      {/* The only screen outside the tabs: first-run setup must not hand the user
+          a tab bar to escape through before a budget profile exists. The cast is
+          because this same screen is also registered inside the tabs, where its
+          navigation prop is typed against the in-tab stack. */}
       <Stack.Screen
-        name="BudgetSetup"
-        component={BudgetSetupScreen}
-        initialParams={{ mode: needsOnboarding ? 'onboarding' : 'newMonth' }}
+        name="Onboarding"
+        component={BudgetSetupScreen as unknown as ComponentType}
+        initialParams={{ mode: 'onboarding' }}
       />
-      <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
-      <Stack.Screen name="HistoryDetail" component={HistoryDetailScreen} />
-      <Stack.Screen name="CategoryManagement" component={CategoryManagementScreen} />
-      <Stack.Screen name="BudgetProfiles" component={BudgetProfilesScreen} />
-      <Stack.Screen name="MasterData" component={MasterDataScreen} />
-      <Stack.Screen name="Accounts" component={AccountsScreen} />
-      <Stack.Screen name="Debts" component={DebtsScreen} />
-      <Stack.Screen name="Bills" component={BillsScreen} />
-      <Stack.Screen name="Goals" component={GoalsScreen} />
     </Stack.Navigator>
   );
 }

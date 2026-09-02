@@ -121,6 +121,12 @@ export function applyColorTheme(mode: ThemeMode) {
   Object.assign(colors, mode === 'light' ? lightColors : darkColors);
 }
 
+// Reads a palette without activating it — the theme transition needs the colors of
+// the mode it is animating *towards* while the current one is still applied.
+export function getPalette(mode: ThemeMode): ColorPalette {
+  return mode === 'light' ? lightColors : darkColors;
+}
+
 // Default category color cycle, in seed order. Kept identical across themes —
 // these are user-facing data colors, not surface colors.
 export const CATEGORY_PALETTE = ['#FF5A1F', '#F2A03D', '#e0654f', '#7FC25A', '#C8C0B6', '#A9714B'];

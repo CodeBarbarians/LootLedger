@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { AddExpenseSheet } from '../components/app/AddExpenseSheet';
@@ -10,6 +10,7 @@ import { Ring } from '../components/app/Ring';
 import { Screen } from '../components/app/Screen';
 import { StatCell } from '../components/app/StatCell';
 import { Text } from '../components/app/Text';
+import { runThemeTransition } from '../components/app/themeTransition';
 import { useCategoriesWithProgress, usePeriodSummary } from '../hooks/useAggregates';
 import { useNetWorth } from '../hooks/useAccounts';
 import { useBillsDueSoon } from '../hooks/useBills';
@@ -37,9 +38,16 @@ export function DashboardScreen({ navigation }: Props) {
   const { data: settings } = useSettings();
   const updateSettings = useUpdateSettings();
 
+  const themeButtonRef = useRef<View>(null);
+
   function toggleTheme() {
     if (!settings) return;
-    updateSettings.mutate({ theme_mode: settings.theme_mode === 'light' ? 'dark' : 'light' });
+    const next = settings.theme_mode === 'light' ? 'dark' : 'light';
+    // The write is deferred to the peak of the transition, so the theme flips
+    // while the singularity covers the screen.
+    runThemeTransition(themeButtonRef, next, () => {
+      updateSettings.mutate({ theme_mode: next });
+    });
   }
 
   if (periodLoading) {
@@ -104,6 +112,7 @@ export function DashboardScreen({ navigation }: Props) {
         </View>
         <View className="flex-row items-center gap-2 mt-1.5">
           <Pressable
+            ref={themeButtonRef}
             onPress={toggleTheme}
             hitSlop={8}
             className="rounded-full border border-border-strong px-3 py-2 active:border-primary"

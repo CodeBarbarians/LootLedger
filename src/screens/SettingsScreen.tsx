@@ -1,9 +1,11 @@
 import * as LocalAuthentication from 'expo-local-authentication';
+import { useRef, type Ref } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 import { CTAButton } from '../components/app/CTAButton';
 import { Screen } from '../components/app/Screen';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
+import { runThemeTransition } from '../components/app/themeTransition';
 import { useToast } from '../components/app/Toast';
 import { useCurrentPeriod } from '../hooks/usePeriods';
 import { useActiveProfile, useUpdateProfile } from '../hooks/useProfiles';
@@ -22,6 +24,7 @@ function Row({
   valueColor,
   onPress,
   last,
+  innerRef,
 }: {
   title: string;
   subtitle: string;
@@ -29,10 +32,12 @@ function Row({
   valueColor?: string;
   onPress?: () => void;
   last?: boolean;
+  innerRef?: Ref<View>;
 }) {
   const Wrapper = onPress ? Pressable : View;
   return (
     <Wrapper
+      ref={innerRef}
       onPress={onPress}
       className={`flex-row justify-between items-center px-[18px] py-4 ${last ? '' : 'border-b border-border'}`}
     >
@@ -58,6 +63,7 @@ export function SettingsScreen({ navigation }: Props) {
   const resetToDefault = useResetToDefaultBudget(profile?.id as number);
   const { show } = useToast();
   const symbol = profile?.currency_symbol ?? 'Rs';
+  const themeRowRef = useRef<View>(null);
 
   function toggleMode() {
     if (!profile) return;
@@ -69,7 +75,12 @@ export function SettingsScreen({ navigation }: Props) {
 
   function toggleTheme() {
     if (!settings) return;
-    updateSettings.mutate({ theme_mode: settings.theme_mode === 'light' ? 'dark' : 'light' });
+    const next = settings.theme_mode === 'light' ? 'dark' : 'light';
+    // The write is deferred to the peak of the transition, so the theme flips
+    // while the singularity covers the screen.
+    runThemeTransition(themeRowRef, next, () => {
+      updateSettings.mutate({ theme_mode: next });
+    });
   }
 
   async function toggleBiometricLock() {
@@ -175,6 +186,7 @@ export function SettingsScreen({ navigation }: Props) {
 
       <View className="rounded-[20px] border border-border bg-card overflow-hidden mt-4">
         <Row
+          innerRef={themeRowRef}
           title="Theme"
           subtitle="Dark or light peach"
           value={settings?.theme_mode === 'light' ? 'LIGHT' : 'DARK'}

@@ -18,14 +18,16 @@ import {
   SpaceGrotesk_700Bold,
 } from '@expo-google-fonts/space-grotesk';
 import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono';
-import { Component, Suspense, useRef, useState, type ReactNode } from 'react';
-import { ScrollView, Text } from 'react-native';
+import { Component, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
+import { ScrollView, Text, View as RNView } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { Spinner } from '@/components/ui/spinner';
 import { View } from '@/components/ui/view';
 import { AppGate } from './src/components/app/AppGate';
+import { ThemeTransitionOverlay } from './src/components/app/ThemeTransitionOverlay';
+import { setThemeTransitionTarget } from './src/components/app/themeTransition';
 import { ToastProvider } from './src/components/app/Toast';
 import { DB_NAME, migrateDbIfNeeded } from './src/db/client';
 import { RootNavigator } from './src/navigation/RootNavigator';
@@ -125,39 +127,53 @@ export default function App() {
   // as `initialState` — this ref outlives the remount since it's owned by
   // this parent component, not the subtree being torn down.
   const navStateRef = useRef<NavigationState | undefined>(undefined);
+  // The theme transition snapshots and animates this view, so it has to stay
+  // mounted across the remount above and sit *below* the overlay in the tree —
+  // otherwise the snapshot would capture the overlay animating itself.
+  const snapshotRef = useRef<RNView | null>(null);
+
+  useEffect(() => {
+    setThemeTransitionTarget(snapshotRef);
+    return () => setThemeTransitionTarget(null);
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <GluestackUIProvider mode={themeMode}>
         <SafeAreaProvider>
-          {!fontsLoaded ? (
-            <LoadingScreen />
-          ) : (
-            <StartupErrorBoundary>
-              <Suspense fallback={<LoadingScreen />}>
-                <SQLiteProvider databaseName={DB_NAME} onInit={onInit} useSuspense>
-                  <QueryClientProvider client={queryClient}>
-                    <ToastProvider>
-                      <AppGate onThemeModeChange={setThemeMode}>
-                        {(remountKey) => (
-                          <NavigationContainer
-                            key={remountKey}
-                            theme={buildNavigationTheme()}
-                            initialState={navStateRef.current}
-                            onStateChange={(state) => {
-                              navStateRef.current = state;
-                            }}
-                          >
-                            <RootNavigator />
-                          </NavigationContainer>
-                        )}
-                      </AppGate>
-                    </ToastProvider>
-                  </QueryClientProvider>
-                </SQLiteProvider>
-              </Suspense>
-            </StartupErrorBoundary>
-          )}
+          {/* collapsable={false} keeps Android from optimising this view away,
+              which would make the snapshot fail or capture the wrong node. */}
+          <RNView ref={snapshotRef} collapsable={false} style={{ flex: 1 }}>
+            {!fontsLoaded ? (
+              <LoadingScreen />
+            ) : (
+              <StartupErrorBoundary>
+                <Suspense fallback={<LoadingScreen />}>
+                  <SQLiteProvider databaseName={DB_NAME} onInit={onInit} useSuspense>
+                    <QueryClientProvider client={queryClient}>
+                      <ToastProvider>
+                        <AppGate onThemeModeChange={setThemeMode}>
+                          {(remountKey) => (
+                            <NavigationContainer
+                              key={remountKey}
+                              theme={buildNavigationTheme()}
+                              initialState={navStateRef.current}
+                              onStateChange={(state) => {
+                                navStateRef.current = state;
+                              }}
+                            >
+                              <RootNavigator />
+                            </NavigationContainer>
+                          )}
+                        </AppGate>
+                      </ToastProvider>
+                    </QueryClientProvider>
+                  </SQLiteProvider>
+                </Suspense>
+              </StartupErrorBoundary>
+            )}
+          </RNView>
+          <ThemeTransitionOverlay />
           <StatusBar style={themeMode === 'light' ? 'dark' : 'light'} />
         </SafeAreaProvider>
       </GluestackUIProvider>

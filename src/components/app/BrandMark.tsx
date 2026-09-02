@@ -10,6 +10,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { colors } from '../../theme';
 
@@ -28,7 +29,7 @@ import { colors } from '../../theme';
 const LIFT_MS = 260;
 const DROP_MS = 420;
 
-export function BrandMark({ size }: { size: number }) {
+export function BrandMark({ size, nudge }: { size: number; nudge?: SharedValue<number> }) {
   const leftHorn = useSharedValue(0);
   const rightHorn = useSharedValue(0);
   const talk = useSharedValue(0);
@@ -96,6 +97,14 @@ export function BrandMark({ size }: { size: number }) {
     // Interrupts the idle loop with a livelier run, then the loop resumes on its
     // next tick.
     juggle(2, 0);
+    // Shoves whatever sits next to the mark and lets it settle back on the same
+    // beat as the horns, so the two read as one movement.
+    if (nudge) {
+      nudge.value = withSequence(
+        withTiming(1, { duration: LIFT_MS, easing: Easing.out(Easing.quad) }),
+        withTiming(0, { duration: DROP_MS + LIFT_MS, easing: Easing.inOut(Easing.quad) })
+      );
+    }
     talk.value = withSequence(
       withTiming(1, { duration: 110 }),
       withTiming(0, { duration: 110 }),

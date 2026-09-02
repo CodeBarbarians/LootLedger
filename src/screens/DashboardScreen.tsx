@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { AddExpenseSheet } from '../components/app/AddExpenseSheet';
@@ -40,6 +41,15 @@ export function DashboardScreen({ navigation }: Props) {
   const setThemeMode = useSetThemeMode();
 
   const themeButtonRef = useRef<View>(null);
+  // Driven by the brand mark when it is tapped, so the heading beside it gets
+  // shoved and settles back with the horns.
+  const markNudge = useSharedValue(0);
+  const headingStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: markNudge.value * 7 },
+      { translateY: -markNudge.value * 2 },
+    ],
+  }));
 
   function toggleTheme() {
     if (!settings) return;
@@ -99,15 +109,15 @@ export function DashboardScreen({ navigation }: Props) {
 
       <View className="flex-row items-start justify-between gap-3 mb-5">
         <View className="flex-row items-center gap-2.5">
-          <BrandMark size={30} />
-          <View>
+          <BrandMark size={30} nudge={markNudge} />
+          <Animated.View style={headingStyle}>
             <Text variant="mono" className="text-[10px] tracking-[3px] text-primary">
               {formatPeriodLabel(period.cycle_start_date).toUpperCase()}
             </Text>
             <Text style={{ fontSize: 22, lineHeight: 27, fontWeight: '700', letterSpacing: -0.2 }} className="font-heading mt-0.5">
               Your budget
             </Text>
-          </View>
+          </Animated.View>
         </View>
         <View className="flex-row items-center gap-2 mt-1.5">
           <Pressable

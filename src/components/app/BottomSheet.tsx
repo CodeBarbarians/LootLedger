@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -7,6 +7,7 @@ import {
   ActionsheetDragIndicator,
   ActionsheetDragIndicatorWrapper,
 } from '@/components/ui/actionsheet';
+import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
 import { Text } from './Text';
 
 interface BottomSheetProps {
@@ -17,14 +18,19 @@ interface BottomSheetProps {
 }
 
 export function BottomSheet({ isOpen, onClose, title, children }: BottomSheetProps) {
+  // The sheet is overlay content, so Android's window resize never reaches it and
+  // KeyboardAvoidingView has nothing to avoid against — it sat *under* the
+  // keyboard. Lifting it by the keyboard's own height is what actually works.
+  const keyboardHeight = useKeyboardHeight();
+
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose}>
       <ActionsheetBackdrop />
-      <ActionsheetContent className="bg-card border-t border-border-strong px-5 pt-5 rounded-t-[28px]" style={{ paddingBottom: 0 }}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ width: '100%' }}
-        >
+      <ActionsheetContent
+        className="bg-card border-t border-border-strong px-5 pt-5 rounded-t-[28px]"
+        style={{ paddingBottom: keyboardHeight }}
+      >
+        <View style={{ width: '100%' }}>
           <View style={{ paddingBottom: 28 }}>
             <ActionsheetDragIndicatorWrapper>
               <ActionsheetDragIndicator />
@@ -39,7 +45,7 @@ export function BottomSheet({ isOpen, onClose, title, children }: BottomSheetPro
             </View>
             {children}
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </ActionsheetContent>
     </Actionsheet>
   );

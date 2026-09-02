@@ -5,7 +5,7 @@ import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
 import { useHistoryTotals } from '../hooks/useAggregates';
 import { usePeriods } from '../hooks/usePeriods';
-import { useSettings } from '../hooks/useSettings';
+import { useActiveProfile } from '../hooks/useProfiles';
 import type { TabScreenProps } from '../navigation/types';
 import { colors } from '../theme';
 import { formatAmount } from '../utils/currency';
@@ -13,10 +13,10 @@ import { formatAmount } from '../utils/currency';
 type Props = TabScreenProps<'History'>;
 
 export function HistoryScreen({ navigation }: Props) {
-  const { data: periods } = usePeriods();
-  const { data: settings } = useSettings();
-  const { data: totals } = useHistoryTotals();
-  const symbol = settings?.currency_symbol ?? 'Rs';
+  const { data: profile } = useActiveProfile();
+  const { data: periods } = usePeriods(profile?.id);
+  const { data: totals } = useHistoryTotals(profile?.id);
+  const symbol = profile?.currency_symbol ?? 'Rs';
 
   return (
     <Screen>
@@ -49,6 +49,7 @@ export function HistoryScreen({ navigation }: Props) {
         <HistoryCard
           key={period.id}
           period={period}
+          profileId={profile?.id}
           symbol={symbol}
           onPress={() => navigation.navigate('HistoryDetail', { periodId: period.id })}
         />

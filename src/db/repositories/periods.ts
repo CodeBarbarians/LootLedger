@@ -3,32 +3,46 @@ import type { BudgetMode, BudgetPeriod } from '../types';
 
 export async function getPeriodByKey(
   db: SQLiteDatabase,
+  profileId: number,
   periodKey: string
 ): Promise<BudgetPeriod | null> {
   return db.getFirstAsync<BudgetPeriod>(
-    'SELECT * FROM budget_periods WHERE period_key = ?',
-    [periodKey]
+    'SELECT * FROM budget_periods WHERE profile_id = ? AND period_key = ?',
+    [profileId, periodKey]
   );
 }
 
-export async function getLatestPeriod(db: SQLiteDatabase): Promise<BudgetPeriod | null> {
+export async function getLatestPeriod(
+  db: SQLiteDatabase,
+  profileId: number
+): Promise<BudgetPeriod | null> {
   return db.getFirstAsync<BudgetPeriod>(
-    'SELECT * FROM budget_periods ORDER BY cycle_start_date DESC LIMIT 1'
+    'SELECT * FROM budget_periods WHERE profile_id = ? ORDER BY cycle_start_date DESC LIMIT 1',
+    [profileId]
   );
 }
 
-export async function listPeriods(db: SQLiteDatabase): Promise<BudgetPeriod[]> {
+export async function listPeriods(db: SQLiteDatabase, profileId: number): Promise<BudgetPeriod[]> {
   return db.getAllAsync<BudgetPeriod>(
-    'SELECT * FROM budget_periods ORDER BY cycle_start_date DESC'
+    'SELECT * FROM budget_periods WHERE profile_id = ? ORDER BY cycle_start_date DESC',
+    [profileId]
   );
 }
 
-export async function getPeriod(db: SQLiteDatabase, id: number): Promise<BudgetPeriod | null> {
-  return db.getFirstAsync<BudgetPeriod>('SELECT * FROM budget_periods WHERE id = ?', [id]);
+export async function getPeriod(
+  db: SQLiteDatabase,
+  profileId: number,
+  id: number
+): Promise<BudgetPeriod | null> {
+  return db.getFirstAsync<BudgetPeriod>(
+    'SELECT * FROM budget_periods WHERE id = ? AND profile_id = ?',
+    [id, profileId]
+  );
 }
 
 export async function updatePeriod(
   db: SQLiteDatabase,
+  profileId: number,
   id: number,
   patch: Partial<{ salary_amount: number; budget_mode: BudgetMode }>
 ): Promise<void> {
@@ -36,11 +50,16 @@ export async function updatePeriod(
   if (keys.length === 0) return;
   const setClause = keys.map((k) => `${k} = ?`).join(', ');
   const values = keys.map((k) => patch[k] as string | number);
-  await db.runAsync(`UPDATE budget_periods SET ${setClause} WHERE id = ?`, [...values, id]);
+  await db.runAsync(`UPDATE budget_periods SET ${setClause} WHERE id = ? AND profile_id = ?`, [
+    ...values,
+    id,
+    profileId,
+  ]);
 }
 
 export async function createPeriod(
   db: SQLiteDatabase,
+  profileId: number,
   data: {
     periodKey: string;
     cycleStartDate: string;
@@ -50,9 +69,10 @@ export async function createPeriod(
   }
 ): Promise<number> {
   const result = await db.runAsync(
-    `INSERT INTO budget_periods (period_key, cycle_start_date, cycle_end_date, salary_amount, budget_mode, created_at, closed)
-     VALUES (?, ?, ?, ?, ?, ?, 0)`,
+    `INSERT INTO budget_periods (profile_id, period_key, cycle_start_date, cycle_end_date, salary_amount, budget_mode, created_at, closed)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
     [
+      profileId,
       data.periodKey,
       data.cycleStartDate,
       data.cycleEndDate,

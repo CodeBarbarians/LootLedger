@@ -29,9 +29,10 @@ export async function getCategoriesWithProgress(
 
 export async function getPeriodSummary(
   db: SQLiteDatabase,
+  profileId: number,
   periodId: number
 ): Promise<PeriodSummary | null> {
-  const period = await getPeriod(db, periodId);
+  const period = await getPeriod(db, profileId, periodId);
   if (!period) return null;
 
   const categories = await getCategoriesWithProgress(db, periodId);
@@ -69,13 +70,14 @@ export async function getDataStats(
 }
 
 export async function getHistoryTotals(
-  db: SQLiteDatabase
+  db: SQLiteDatabase,
+  profileId: number
 ): Promise<{ totalSaved: number; totalOver: number }> {
-  const periods = await listPeriods(db);
+  const periods = await listPeriods(db, profileId);
   let totalSaved = 0;
   let totalOver = 0;
   for (const p of periods) {
-    const summary = await getPeriodSummary(db, p.id);
+    const summary = await getPeriodSummary(db, profileId, p.id);
     if (!summary) continue;
     totalSaved += Math.max(0, summary.saved);
     totalOver += summary.overspend;

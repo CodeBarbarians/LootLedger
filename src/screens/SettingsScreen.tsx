@@ -5,8 +5,8 @@ import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
 import { useToast } from '../components/app/Toast';
 import { useCurrentPeriod } from '../hooks/usePeriods';
+import { useActiveProfile, useUpdateProfile } from '../hooks/useProfiles';
 import { useResetToDefaultBudget } from '../hooks/useReset';
-import { useSettings, useUpdateSettings } from '../hooks/useSettings';
 import type { TabScreenProps } from '../navigation/types';
 import { colors } from '../theme';
 import { formatAmount } from '../utils/currency';
@@ -48,16 +48,19 @@ function Row({
 }
 
 export function SettingsScreen({ navigation }: Props) {
-  const { data: settings } = useSettings();
-  const { data: currentPeriod } = useCurrentPeriod();
-  const updateSettings = useUpdateSettings();
-  const resetToDefault = useResetToDefaultBudget();
+  const { data: profile } = useActiveProfile();
+  const { data: currentPeriod } = useCurrentPeriod(profile?.id, profile?.cycle_start_day ?? 1);
+  const updateProfile = useUpdateProfile();
+  const resetToDefault = useResetToDefaultBudget(profile?.id as number);
   const { show } = useToast();
-  const symbol = settings?.currency_symbol ?? 'Rs';
+  const symbol = profile?.currency_symbol ?? 'Rs';
 
   function toggleMode() {
-    if (!settings) return;
-    updateSettings.mutate({ budget_mode: settings.budget_mode === 'percent' ? 'amount' : 'percent' });
+    if (!profile) return;
+    updateProfile.mutate({
+      id: profile.id,
+      patch: { budget_mode: profile.budget_mode === 'percent' ? 'amount' : 'percent' },
+    });
   }
 
   function confirmReset() {
@@ -85,14 +88,14 @@ export function SettingsScreen({ navigation }: Props) {
       <View className="rounded-[20px] border border-border bg-card overflow-hidden">
         <Row
           title="Currency"
-          subtitle={settings?.currency_code === 'PKR' ? 'Pakistani Rupee' : settings?.currency_code ?? ''}
-          value={settings?.currency_code ?? ''}
+          subtitle={profile?.currency_code === 'PKR' ? 'Pakistani Rupee' : profile?.currency_code ?? ''}
+          value={profile?.currency_code ?? ''}
           valueColor={colors.accent}
         />
         <Row
           title="Monthly salary"
           subtitle="Tap to edit in setup"
-          value={formatAmount(settings?.salary_amount ?? 0, symbol)}
+          value={formatAmount(profile?.salary_amount ?? 0, symbol)}
           onPress={() =>
             navigation.navigate(
               'BudgetSetup',
@@ -103,7 +106,7 @@ export function SettingsScreen({ navigation }: Props) {
         <Row
           title="Budget mode"
           subtitle="Applies to every category"
-          value={settings?.budget_mode === 'percent' ? '% MODE' : 'RS MODE'}
+          value={profile?.budget_mode === 'percent' ? '% MODE' : 'RS MODE'}
           valueColor={colors.accent}
           onPress={toggleMode}
         />
@@ -123,6 +126,13 @@ export function SettingsScreen({ navigation }: Props) {
       </View>
 
       <View className="rounded-[20px] border border-border bg-card overflow-hidden mt-4">
+        <Row
+          title="Budget profiles"
+          subtitle="Switch, rename, or add a budget"
+          value="→"
+          valueColor={colors.accent}
+          onPress={() => navigation.navigate('BudgetProfiles')}
+        />
         <Row
           title="Manage categories"
           subtitle="Rename, recolor, retype, archive"

@@ -9,7 +9,7 @@ import { Text } from '../components/app/Text';
 import type { Subcategory } from '../db/types';
 import { useCategoriesWithProgress } from '../hooks/useAggregates';
 import { useCategories } from '../hooks/useCategories';
-import { useSettings } from '../hooks/useSettings';
+import { useActiveProfile } from '../hooks/useProfiles';
 import {
   useCreateSubcategory,
   useDeleteSubcategory,
@@ -26,8 +26,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CategoryDetail'>;
 
 export function CategoryDetailScreen({ route, navigation }: Props) {
   const { categoryId, periodId } = route.params;
-  const { data: settings } = useSettings();
-  const { data: categories } = useCategories(true);
+  const { data: profile } = useActiveProfile();
+  const { data: categories } = useCategories(profile?.id, true);
   const { data: progressList } = useCategoriesWithProgress(periodId);
   const { data: subcategories } = useSubcategories(periodId, categoryId);
   const { data: transactions } = useTransactions(periodId, categoryId);
@@ -38,7 +38,7 @@ export function CategoryDetailScreen({ route, navigation }: Props) {
   const deleteSubcategory = useDeleteSubcategory(periodId);
   const deleteTransaction = useDeleteTransaction(periodId);
 
-  const symbol = settings?.currency_symbol ?? 'Rs';
+  const symbol = profile?.currency_symbol ?? 'Rs';
   const category = categories?.find((c) => c.id === categoryId);
   const progress = progressList?.find((c) => c.id === categoryId);
 
@@ -48,7 +48,7 @@ export function CategoryDetailScreen({ route, navigation }: Props) {
   const left = progress?.remaining ?? 0;
   const over = left < -0.5;
   const fraction = progress && progress.allocated > 0 ? progress.spent / progress.allocated : 0;
-  const share = progress && settings ? (settings.salary_amount > 0 ? progress.allocated / settings.salary_amount : 0) : 0;
+  const share = progress && profile ? (profile.salary_amount > 0 ? progress.allocated / profile.salary_amount : 0) : 0;
 
   return (
     <Screen onBack={() => navigation.goBack()}>

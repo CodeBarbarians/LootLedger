@@ -4,7 +4,7 @@ import { Bar } from '../components/app/Bar';
 import { Screen } from '../components/app/Screen';
 import { Text } from '../components/app/Text';
 import { useCategoriesWithProgress, usePeriodSummary } from '../hooks/useAggregates';
-import { useSettings } from '../hooks/useSettings';
+import { useActiveProfile } from '../hooks/useProfiles';
 import type { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme';
 import { formatAmount } from '../utils/currency';
@@ -14,10 +14,10 @@ type Props = NativeStackScreenProps<RootStackParamList, 'HistoryDetail'>;
 
 export function HistoryDetailScreen({ route, navigation }: Props) {
   const { periodId } = route.params;
-  const { data: settings } = useSettings();
-  const { data: summary } = usePeriodSummary(periodId);
+  const { data: profile } = useActiveProfile();
+  const { data: summary } = usePeriodSummary(profile?.id, periodId);
   const { data: categories } = useCategoriesWithProgress(periodId);
-  const symbol = settings?.currency_symbol ?? 'Rs';
+  const symbol = profile?.currency_symbol ?? 'Rs';
 
   if (!summary) return null;
 

@@ -9,12 +9,13 @@ import { Text } from './Text';
 
 interface HistoryCardProps {
   period: BudgetPeriod;
+  profileId: number | undefined;
   symbol: string;
   onPress: () => void;
 }
 
-export function HistoryCard({ period, symbol, onPress }: HistoryCardProps) {
-  const { data: summary } = usePeriodSummary(period.id);
+export function HistoryCard({ period, profileId, symbol, onPress }: HistoryCardProps) {
+  const { data: summary } = usePeriodSummary(profileId, period.id);
   if (!summary) return null;
 
   const diff = period.salary_amount - summary.totalSpent;

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSQLiteContext } from 'expo-sqlite';
-import { completeOnboarding, getSettings, updateSettings } from '../db/repositories/settings';
-import type { BudgetMode, Settings } from '../db/types';
+import { getSettings, setActiveProfileId, updateSettings } from '../db/repositories/settings';
+import type { Settings } from '../db/types';
 
 export function useSettings() {
   const db = useSQLiteContext();
@@ -22,17 +22,11 @@ export function useUpdateSettings() {
   });
 }
 
-export function useCompleteOnboarding() {
+export function useSetActiveProfile() {
   const db = useSQLiteContext();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: {
-      salary_amount: number;
-      budget_mode: BudgetMode;
-      currency_code: string;
-      currency_symbol: string;
-      cycle_start_day: number;
-    }) => completeOnboarding(db, data),
+    mutationFn: (profileId: number) => setActiveProfileId(db, profileId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
     },

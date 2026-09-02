@@ -11,45 +11,44 @@ import {
 } from '../db/repositories/periods';
 import type { BudgetMode } from '../db/types';
 import { getCycleBoundsForDate, toIsoDate } from '../utils/cycle';
-import { useSettings } from './useSettings';
 
-export function useCurrentPeriod() {
+export function useCurrentPeriod(profileId: number | undefined, cycleStartDay: number) {
   const db = useSQLiteContext();
-  const { data: settings } = useSettings();
-  const cycleStartDay = settings?.cycle_start_day ?? 1;
   const bounds = getCycleBoundsForDate(new Date(), cycleStartDay);
 
   const query = useQuery({
-    queryKey: ['period', bounds.periodKey],
-    queryFn: () => getPeriodByKey(db, bounds.periodKey),
-    enabled: !!settings,
+    queryKey: ['period', profileId, bounds.periodKey],
+    queryFn: () => getPeriodByKey(db, profileId as number, bounds.periodKey),
+    enabled: profileId != null,
   });
 
   return { ...query, bounds };
 }
 
-export function useLatestPeriod() {
+export function useLatestPeriod(profileId: number | undefined) {
   const db = useSQLiteContext();
   return useQuery({
-    queryKey: ['latestPeriod'],
-    queryFn: () => getLatestPeriod(db),
+    queryKey: ['latestPeriod', profileId],
+    queryFn: () => getLatestPeriod(db, profileId as number),
+    enabled: profileId != null,
   });
 }
 
-export function usePeriod(periodId: number | undefined) {
+export function usePeriod(profileId: number | undefined, periodId: number | undefined) {
   const db = useSQLiteContext();
   return useQuery({
-    queryKey: ['periodById', periodId],
-    queryFn: () => getPeriod(db, periodId as number),
-    enabled: periodId != null,
+    queryKey: ['periodById', profileId, periodId],
+    queryFn: () => getPeriod(db, profileId as number, periodId as number),
+    enabled: profileId != null && periodId != null,
   });
 }
 
-export function usePeriods() {
+export function usePeriods(profileId: number | undefined) {
   const db = useSQLiteContext();
   return useQuery({
-    queryKey: ['periods'],
-    queryFn: () => listPeriods(db),
+    queryKey: ['periods', profileId],
+    queryFn: () => listPeriods(db, profileId as number),
+    enabled: profileId != null,
   });
 }
 
@@ -63,19 +62,19 @@ export interface SaveBudgetSetupInput {
   existingPeriodId?: number;
 }
 
-export function useSaveBudgetSetup() {
+export function useSaveBudgetSetup(profileId: number) {
   const db = useSQLiteContext();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: SaveBudgetSetupInput) => {
       let periodId = input.existingPeriodId;
       if (periodId != null) {
-        await updatePeriod(db, periodId, {
+        await updatePeriod(db, profileId, periodId, {
           salary_amount: input.salaryAmount,
           budget_mode: input.budgetMode,
         });
       } else {
-        periodId = await createPeriod(db, {
+        periodId = await createPeriod(db, profileId, {
           periodKey: input.periodKey,
           cycleStartDate: input.cycleStartDate,
           cycleEndDate: input.cycleEndDate,

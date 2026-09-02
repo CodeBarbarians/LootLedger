@@ -1,4 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import { Bar, SegmentedBar } from '../components/app/Bar';
@@ -11,14 +13,19 @@ import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
 import { useToast } from '../components/app/Toast';
 import { CURRENCY_OPTIONS } from '../constants/currencies';
+import type { AllocationInput } from '../db/repositories/allocations';
+import { replaceAllocationsForPeriod } from '../db/repositories/allocations';
+import { createCategory as createCategoryRow } from '../db/repositories/categories';
+import { createPeriod as createPeriodRow } from '../db/repositories/periods';
 import { DEFAULT_CATEGORY_SEED } from '../db/schema';
-import type { BudgetMode, Category } from '../db/types';
+import type { BudgetMode, Category, CategoryKind } from '../db/types';
 import { useAllocationsForPeriod } from '../hooks/useAllocations';
 import { useArchiveCategory, useCategories, useCreateCategory } from '../hooks/useCategories';
 import { useLatestPeriod, usePeriod, useSaveBudgetSetup, toPeriodDates } from '../hooks/usePeriods';
-import { useCompleteOnboarding, useSettings } from '../hooks/useSettings';
+import { useActiveProfile, useCreateProfile } from '../hooks/useProfiles';
+import { useSetActiveProfile } from '../hooks/useSettings';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme';
+import { CATEGORY_PALETTE, colors } from '../theme';
 import { formatAmount, formatPercent } from '../utils/currency';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BudgetSetup'>;
@@ -27,6 +34,7 @@ interface Row {
   categoryId: number;
   name: string;
   color: string;
+  kind: CategoryKind;
   percent: string;
   amount: string;
 }
@@ -34,22 +42,29 @@ interface Row {
 export function BudgetSetupScreen({ route, navigation }: Props) {
   const { mode, periodId } = route.params;
   const isOnboarding = mode === 'onboarding';
+  const isCreatingProfile = mode === 'onboarding' || mode === 'newProfile';
   const { show } = useToast();
+  const db = useSQLiteContext();
+  const queryClient = useQueryClient();
 
-  const { data: settings } = useSettings();
-  const { data: categories } = useCategories();
-  const { data: existingPeriod } = usePeriod(periodId);
+  const { data: activeProfile } = useActiveProfile();
+  const profileIdForQueries = isCreatingProfile ? undefined : activeProfile?.id;
+
+  const { data: categories } = useCategories(profileIdForQueries);
+  const { data: existingPeriod } = usePeriod(profileIdForQueries, periodId);
   const { data: existingAllocations } = useAllocationsForPeriod(periodId);
-  const { data: latestPeriod } = useLatestPeriod();
+  const { data: latestPeriod } = useLatestPeriod(profileIdForQueries);
   const { data: latestAllocations } = useAllocationsForPeriod(
     mode === 'newMonth' ? latestPeriod?.id : undefined
   );
 
-  const completeOnboarding = useCompleteOnboarding();
-  const saveBudgetSetup = useSaveBudgetSetup();
-  const createCategory = useCreateCategory();
-  const archiveCategory = useArchiveCategory();
+  const createProfile = useCreateProfile();
+  const setActiveProfile = useSetActiveProfile();
+  const saveBudgetSetup = useSaveBudgetSetup(activeProfile?.id as number);
+  const createCategory = useCreateCategory(activeProfile?.id as number);
+  const archiveCategory = useArchiveCategory(activeProfile?.id as number);
 
+  const [profileName, setProfileName] = useState(isOnboarding ? 'Personal' : '');
   const [currencyCode, setCurrencyCode] = useState('PKR');
   const [currencySymbol, setCurrencySymbol] = useState('₨');
   const [cycleStartDay, setCycleStartDay] = useState('1');
@@ -60,45 +75,59 @@ export function BudgetSetupScreen({ route, navigation }: Props) {
   const [saving, setSaving] = useState(false);
   const [showNewCategory, setShowNewCategory] = useState(false);
 
-  const symbol = isOnboarding ? currencySymbol : settings?.currency_symbol ?? 'Rs';
+  const symbol = isCreatingProfile ? currencySymbol : activeProfile?.currency_symbol ?? 'Rs';
 
   useEffect(() => {
-    if (initialized || !categories) return;
-    if (!isOnboarding && !settings) return;
+    if (initialized) return;
 
-    if (!isOnboarding) {
-      setBudgetMode((existingPeriod?.budget_mode ?? settings!.budget_mode) as BudgetMode);
-      setSalaryAmount(String(existingPeriod?.salary_amount ?? settings!.salary_amount ?? ''));
+    if (isCreatingProfile) {
+      const nextRows: Row[] = DEFAULT_CATEGORY_SEED.map((seed, idx) => ({
+        categoryId: -(idx + 1),
+        name: seed.name,
+        color: seed.color,
+        kind: seed.kind,
+        percent: String(Math.round(seed.percent * 1000) / 10),
+        amount: '',
+      }));
+      setRows(nextRows);
+      setInitialized(true);
+      return;
     }
+
+    if (!categories || !activeProfile) return;
+
+    setBudgetMode((existingPeriod?.budget_mode ?? activeProfile.budget_mode) as BudgetMode);
+    setSalaryAmount(String(existingPeriod?.salary_amount ?? activeProfile.salary_amount ?? ''));
 
     const sourceAllocations = mode === 'edit' ? existingAllocations : mode === 'newMonth' ? latestAllocations : null;
     if (mode === 'edit' && !existingAllocations) return;
     if (mode === 'newMonth' && latestPeriod && !latestAllocations) return;
 
-    const nextRows: Row[] = categories.map((c: Category, idx: number) => {
+    const nextRows: Row[] = categories.map((c: Category) => {
       const existing = sourceAllocations?.find((a) => a.category_id === c.id);
-      if (existing) {
-        return {
-          categoryId: c.id,
-          name: c.name,
-          color: c.color,
-          percent: existing.percent != null ? String(Math.round(existing.percent * 1000) / 10) : '',
-          amount: String(Math.round(existing.amount_allocated)),
-        };
-      }
-      const seedPct = DEFAULT_CATEGORY_SEED[idx]?.percent ?? 0;
       return {
         categoryId: c.id,
         name: c.name,
         color: c.color,
-        percent: isOnboarding ? String(Math.round(seedPct * 1000) / 10) : '',
-        amount: '',
+        kind: c.kind,
+        percent: existing?.percent != null ? String(Math.round(existing.percent * 1000) / 10) : '',
+        amount: existing ? String(Math.round(existing.amount_allocated)) : '',
       };
     });
 
     setRows(nextRows);
     setInitialized(true);
-  }, [categories, settings, existingPeriod, existingAllocations, latestAllocations, latestPeriod, initialized, isOnboarding, mode]);
+  }, [
+    categories,
+    activeProfile,
+    existingPeriod,
+    existingAllocations,
+    latestAllocations,
+    latestPeriod,
+    initialized,
+    isCreatingProfile,
+    mode,
+  ]);
 
   const salary = parseFloat(salaryAmount) || 0;
 
@@ -124,14 +153,35 @@ export function BudgetSetupScreen({ route, navigation }: Props) {
   }
 
   async function removeRow(categoryId: number) {
+    if (isCreatingProfile) {
+      setRows((prev) => prev.filter((r) => r.categoryId !== categoryId));
+      show('Category removed');
+      return;
+    }
     await archiveCategory.mutateAsync(categoryId);
     setRows((prev) => prev.filter((r) => r.categoryId !== categoryId));
     show('Category removed');
   }
 
-  async function addCategory(data: { name: string; value: number; kind: 'expense' | 'debt' | 'saving' }) {
-    const palette = ['#FF5A1F', '#F2A03D', '#e0654f', '#7FC25A', '#C8C0B6', '#A9714B'];
-    const color = palette[rows.length % palette.length];
+  async function addCategory(data: { name: string; value: number; kind: CategoryKind }) {
+    const color = CATEGORY_PALETTE[rows.length % CATEGORY_PALETTE.length];
+
+    if (isCreatingProfile) {
+      setRows((prev) => [
+        ...prev,
+        {
+          categoryId: -(prev.length + 1),
+          name: data.name,
+          color,
+          kind: data.kind,
+          percent: budgetMode === 'percent' ? String(data.value) : '',
+          amount: budgetMode === 'amount' ? String(data.value) : '',
+        },
+      ]);
+      show('Category added');
+      return;
+    }
+
     const id = await createCategory.mutateAsync({ name: data.name, color, kind: data.kind });
     setRows((prev) => [
       ...prev,
@@ -139,6 +189,7 @@ export function BudgetSetupScreen({ route, navigation }: Props) {
         categoryId: id,
         name: data.name,
         color,
+        kind: data.kind,
         percent: budgetMode === 'percent' ? String(data.value) : '',
         amount: budgetMode === 'amount' ? String(data.value) : '',
       },
@@ -147,6 +198,10 @@ export function BudgetSetupScreen({ route, navigation }: Props) {
   }
 
   async function handleSave() {
+    if (isCreatingProfile && !profileName.trim()) {
+      show('Give this budget profile a name');
+      return;
+    }
     if (salary <= 0) {
       show('Enter a monthly amount greater than 0');
       return;
@@ -158,17 +213,51 @@ export function BudgetSetupScreen({ route, navigation }: Props) {
 
     setSaving(true);
     try {
-      const cycleDay = isOnboarding ? parseInt(cycleStartDay, 10) || 1 : settings!.cycle_start_day;
+      if (isCreatingProfile) {
+        const cycleDay = parseInt(cycleStartDay, 10) || 1;
 
-      if (isOnboarding) {
-        await completeOnboarding.mutateAsync({
-          salary_amount: salary,
-          budget_mode: budgetMode,
-          currency_code: currencyCode,
-          currency_symbol: currencySymbol,
-          cycle_start_day: cycleDay,
+        const newProfileId = await createProfile.mutateAsync({
+          name: profileName.trim(),
+          color: CATEGORY_PALETTE[0],
+          currencyCode,
+          currencySymbol,
+          cycleStartDay: cycleDay,
+          salaryAmount: salary,
+          budgetMode,
         });
+        await setActiveProfile.mutateAsync(newProfileId);
+
+        const allocations: AllocationInput[] = [];
+        for (const row of rows) {
+          const categoryId = await createCategoryRow(db, newProfileId, {
+            name: row.name,
+            color: row.color,
+            kind: row.kind,
+          });
+          allocations.push({
+            categoryId,
+            percent: budgetMode === 'percent' ? (parseFloat(row.percent) || 0) / 100 : null,
+            amountAllocated:
+              budgetMode === 'percent' ? ((parseFloat(row.percent) || 0) / 100) * salary : parseFloat(row.amount) || 0,
+          });
+        }
+
+        const dates = toPeriodDates(new Date(), cycleDay);
+        const newPeriodId = await createPeriodRow(db, newProfileId, {
+          periodKey: dates.periodKey,
+          cycleStartDate: dates.cycleStartDate,
+          cycleEndDate: dates.cycleEndDate,
+          salaryAmount: salary,
+          budgetMode,
+        });
+        await replaceAllocationsForPeriod(db, newPeriodId, allocations);
+        queryClient.invalidateQueries();
+
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+        return;
       }
+
+      const cycleDay = activeProfile!.cycle_start_day;
 
       const dates =
         mode === 'edit' && existingPeriod
@@ -210,9 +299,28 @@ export function BudgetSetupScreen({ route, navigation }: Props) {
 
   return (
     <Screen onBack={isOnboarding ? undefined : () => navigation.goBack()}>
-      {isOnboarding ? (
+      {isCreatingProfile ? (
         <View className="rounded-[22px] border border-border bg-card px-[18px] py-4 mb-3.5">
           <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+            PROFILE NAME
+          </Text>
+          <TextInput
+            value={profileName}
+            onChangeText={setProfileName}
+            placeholder="e.g. Freelance"
+            placeholderTextColor={colors.placeholder}
+            style={{
+              marginTop: 6,
+              height: 28,
+              padding: 0,
+              color: colors.textPrimary,
+              fontFamily: 'SpaceGrotesk_600SemiBold',
+              fontSize: 16,
+              includeFontPadding: false,
+              textAlignVertical: 'center',
+            }}
+          />
+          <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-4">
             CURRENCY
           </Text>
           <View className="flex-row flex-wrap gap-2 mt-2">
@@ -408,7 +516,7 @@ export function BudgetSetupScreen({ route, navigation }: Props) {
       <DashedButton label="+ ADD CATEGORY" className="mt-3" onPress={() => setShowNewCategory(true)} />
 
       <CTAButton
-        label={isOnboarding ? 'GET STARTED' : mode === 'newMonth' ? 'START MONTH' : 'SAVE BUDGET'}
+        label={isOnboarding ? 'GET STARTED' : mode === 'newProfile' ? 'CREATE PROFILE' : mode === 'newMonth' ? 'START MONTH' : 'SAVE BUDGET'}
         className="mt-5"
         loading={saving}
         onPress={handleSave}

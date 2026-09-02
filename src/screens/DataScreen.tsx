@@ -7,6 +7,7 @@ import { useToast } from '../components/app/Toast';
 import { useDataStats } from '../hooks/useAggregates';
 import { useBackupPreview, useExportBackup, useImportBackup } from '../hooks/useBackup';
 import { useLatestPeriod } from '../hooks/usePeriods';
+import { useActiveProfile } from '../hooks/useProfiles';
 import { useSettings } from '../hooks/useSettings';
 import type { TabScreenProps } from '../navigation/types';
 import { colors } from '../theme';
@@ -16,9 +17,10 @@ type Props = TabScreenProps<'Data'>;
 
 export function DataScreen({ navigation }: Props) {
   const { data: settings } = useSettings();
+  const { data: profile } = useActiveProfile();
   const { data: stats } = useDataStats();
   const { data: preview } = useBackupPreview();
-  const { data: latestPeriod } = useLatestPeriod();
+  const { data: latestPeriod } = useLatestPeriod(profile?.id);
   const exportBackup = useExportBackup();
   const importBackup = useImportBackup();
   const { show } = useToast();

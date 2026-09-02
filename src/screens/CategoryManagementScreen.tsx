@@ -15,6 +15,7 @@ import {
   useUnarchiveCategory,
   useUpdateCategory,
 } from '../hooks/useCategories';
+import { useActiveProfile } from '../hooks/useProfiles';
 import type { RootStackParamList } from '../navigation/types';
 import { CATEGORY_PALETTE, colors } from '../theme';
 
@@ -33,11 +34,13 @@ const KIND_COLOR: Record<CategoryKind, string> = {
 };
 
 export function CategoryManagementScreen({ navigation }: Props) {
-  const { data: categories } = useCategories(true);
-  const createCategory = useCreateCategory();
-  const updateCategory = useUpdateCategory();
-  const archiveCategory = useArchiveCategory();
-  const unarchiveCategory = useUnarchiveCategory();
+  const { data: profile } = useActiveProfile();
+  const profileId = profile?.id as number;
+  const { data: categories } = useCategories(profileId, true);
+  const createCategory = useCreateCategory(profileId);
+  const updateCategory = useUpdateCategory(profileId);
+  const archiveCategory = useArchiveCategory(profileId);
+  const unarchiveCategory = useUnarchiveCategory(profileId);
   const { show } = useToast();
 
   const [selectedId, setSelectedId] = useState<number | null>(null);

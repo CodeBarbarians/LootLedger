@@ -11,7 +11,7 @@ import { StatCell } from '../components/app/StatCell';
 import { Text } from '../components/app/Text';
 import { useCategoriesWithProgress, usePeriodSummary } from '../hooks/useAggregates';
 import { useCurrentPeriod } from '../hooks/usePeriods';
-import { useSettings } from '../hooks/useSettings';
+import { useActiveProfile } from '../hooks/useProfiles';
 import type { TabScreenProps } from '../navigation/types';
 import { colors } from '../theme';
 import { formatAmount, formatPercent } from '../utils/currency';
@@ -20,11 +20,11 @@ import { formatPeriodLabel } from '../utils/cycle';
 type Props = TabScreenProps<'Dashboard'>;
 
 export function DashboardScreen({ navigation }: Props) {
-  const { data: settings } = useSettings();
-  const { data: period, isLoading: periodLoading, bounds } = useCurrentPeriod();
-  const { data: summary } = usePeriodSummary(period?.id);
+  const { data: profile } = useActiveProfile();
+  const { data: period, isLoading: periodLoading, bounds } = useCurrentPeriod(profile?.id, profile?.cycle_start_day ?? 1);
+  const { data: summary } = usePeriodSummary(profile?.id, period?.id);
   const { data: categories } = useCategoriesWithProgress(period?.id);
-  const symbol = settings?.currency_symbol ?? 'Rs';
+  const symbol = profile?.currency_symbol ?? 'Rs';
   const [showAddExpense, setShowAddExpense] = useState(false);
 
   if (periodLoading) {
@@ -65,6 +65,16 @@ export function DashboardScreen({ navigation }: Props) {
 
   return (
     <Screen>
+      <Pressable
+        onPress={() => navigation.navigate('BudgetProfiles')}
+        className="flex-row items-center gap-1.5 self-start mb-3 rounded-full border border-border-strong px-2.5 py-1.5 active:border-primary"
+      >
+        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: profile?.color ?? colors.accent }} />
+        <Text variant="mono" className="font-mono-bold text-[9px] tracking-wider text-primary" numberOfLines={1}>
+          {profile?.name ?? 'PROFILE'}
+        </Text>
+      </Pressable>
+
       <View className="flex-row items-start justify-between gap-3 mb-5">
         <View className="flex-row items-center gap-2.5">
           <BrandMark size={30} />
@@ -82,7 +92,7 @@ export function DashboardScreen({ navigation }: Props) {
           className="mt-1.5 rounded-full border border-border-strong px-3 py-2 active:border-primary"
         >
           <Text variant="mono" className="font-mono-bold text-[10px] tracking-wider text-primary">
-            {settings?.budget_mode === 'percent' ? '% MODE' : 'RS MODE'}
+            {profile?.budget_mode === 'percent' ? '% MODE' : 'RS MODE'}
           </Text>
         </Pressable>
       </View>

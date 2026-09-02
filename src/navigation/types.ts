@@ -5,9 +5,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 export type RootStackParamList = {
   MainTabs: undefined;
   CategoryDetail: { categoryId: number; periodId: number };
-  BudgetSetup: { mode: 'onboarding' | 'edit' | 'newMonth'; periodId?: number };
+  BudgetSetup: { mode: 'onboarding' | 'edit' | 'newMonth' | 'newProfile'; periodId?: number };
   HistoryDetail: { periodId: number };
   CategoryManagement: undefined;
+  BudgetProfiles: undefined;
 };
 
 export type MainTabsParamList = {

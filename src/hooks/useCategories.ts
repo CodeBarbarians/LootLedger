@@ -9,47 +9,49 @@ import {
 } from '../db/repositories/categories';
 import type { Category, CategoryKind } from '../db/types';
 
-export function useCategories(includeArchived = false) {
+export function useCategories(profileId: number | undefined, includeArchived = false) {
   const db = useSQLiteContext();
   return useQuery({
-    queryKey: ['categories', includeArchived],
-    queryFn: () => listCategories(db, includeArchived),
+    queryKey: ['categories', profileId, includeArchived],
+    queryFn: () => listCategories(db, profileId as number, includeArchived),
+    enabled: profileId != null,
   });
 }
 
-export function useCreateCategory() {
+export function useCreateCategory(profileId: number) {
   const db = useSQLiteContext();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; color: string; kind: CategoryKind }) => createCategory(db, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
+    mutationFn: (data: { name: string; color: string; kind: CategoryKind }) =>
+      createCategory(db, profileId, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories', profileId] }),
   });
 }
 
-export function useUpdateCategory() {
+export function useUpdateCategory(profileId: number) {
   const db = useSQLiteContext();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, patch }: { id: number; patch: Partial<Pick<Category, 'name' | 'color' | 'sort_order' | 'kind'>> }) =>
-      updateCategory(db, id, patch),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
+      updateCategory(db, profileId, id, patch),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories', profileId] }),
   });
 }
 
-export function useArchiveCategory() {
+export function useArchiveCategory(profileId: number) {
   const db = useSQLiteContext();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => archiveCategory(db, id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
+    mutationFn: (id: number) => archiveCategory(db, profileId, id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories', profileId] }),
   });
 }
 
-export function useUnarchiveCategory() {
+export function useUnarchiveCategory(profileId: number) {
   const db = useSQLiteContext();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => unarchiveCategory(db, id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
+    mutationFn: (id: number) => unarchiveCategory(db, profileId, id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories', profileId] }),
   });
 }

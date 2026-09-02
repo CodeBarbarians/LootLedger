@@ -6,6 +6,7 @@ import { HistoryScreen } from '../screens/HistoryScreen';
 import { DataScreen } from '../screens/DataScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { useCurrentPeriod } from '../hooks/usePeriods';
+import { useActiveProfile } from '../hooks/useProfiles';
 import { colors, fontFamily } from '../theme';
 import type { MainTabsParamList, RootStackParamList } from './types';
 
@@ -31,7 +32,8 @@ function BudgetPlaceholder() {
 }
 
 export function TabNavigator() {
-  const { data: currentPeriod } = useCurrentPeriod();
+  const { data: activeProfile } = useActiveProfile();
+  const { data: currentPeriod } = useCurrentPeriod(activeProfile?.id, activeProfile?.cycle_start_day ?? 1);
 
   return (
     <Tab.Navigator

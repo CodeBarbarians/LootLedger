@@ -4,17 +4,28 @@ export type CategoryKind = 'expense' | 'debt' | 'saving';
 
 export interface Settings {
   id: number;
-  salary_amount: number;
-  budget_mode: BudgetMode;
+  active_profile_id: number | null;
+  last_backup_at: string | null;
+}
+
+export interface BudgetProfile {
+  id: number;
+  name: string;
+  color: string;
   currency_code: string;
   currency_symbol: string;
   cycle_start_day: number;
+  salary_amount: number;
+  budget_mode: BudgetMode;
   onboarded: number; // 0 | 1
-  last_backup_at: string | null;
+  archived: number; // 0 | 1
+  sort_order: number;
+  created_at: string;
 }
 
 export interface Category {
   id: number;
+  profile_id: number;
   name: string;
   color: string;
   kind: CategoryKind;
@@ -25,6 +36,7 @@ export interface Category {
 
 export interface BudgetPeriod {
   id: number;
+  profile_id: number;
   period_key: string; // '2026-08'
   cycle_start_date: string; // ISO date
   cycle_end_date: string; // ISO date

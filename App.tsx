@@ -21,7 +21,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { View } from '@/components/ui/view';
 import { ToastProvider } from './src/components/app/Toast';
 import { DB_NAME, migrateDbIfNeeded } from './src/db/client';
-import { seedDefaultCategoriesIfEmpty } from './src/db/repositories/categories';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { colors } from './src/theme';
 
@@ -41,7 +40,6 @@ const navigationTheme: Theme = {
 
 async function onInit(db: SQLiteDatabase) {
   await migrateDbIfNeeded(db);
-  await seedDefaultCategoriesIfEmpty(db);
 }
 
 export default function App() {

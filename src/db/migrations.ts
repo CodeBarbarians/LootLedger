@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { CREATE_TABLES_SQL } from './schema';
 
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -20,7 +20,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       `INSERT OR IGNORE INTO settings (id, active_profile_id, last_backup_at)
        VALUES (1, NULL, NULL)`
     );
-    currentVersion = 6;
+    currentVersion = 7;
   }
 
   if (currentVersion === 1) {
@@ -263,6 +263,35 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       'CREATE INDEX IF NOT EXISTS idx_bill_payments_bill ON bill_payments(bill_id)'
     );
     currentVersion = 6;
+  }
+
+  if (currentVersion === 6) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS goals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        profile_id INTEGER NOT NULL REFERENCES budget_profiles(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        target_amount REAL NOT NULL DEFAULT 0,
+        target_date TEXT,
+        color TEXT NOT NULL DEFAULT '#FF5A1F',
+        archived INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      )
+    `);
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS goal_contributions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        goal_id INTEGER NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+        amount REAL NOT NULL,
+        note TEXT,
+        created_at TEXT NOT NULL
+      )
+    `);
+    await db.execAsync('CREATE INDEX IF NOT EXISTS idx_goals_profile ON goals(profile_id)');
+    await db.execAsync(
+      'CREATE INDEX IF NOT EXISTS idx_goal_contributions_goal ON goal_contributions(goal_id)'
+    );
+    currentVersion = 7;
   }
 
   await db.execAsync(`PRAGMA user_version = ${DB_VERSION}`);

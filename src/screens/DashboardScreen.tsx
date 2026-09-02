@@ -13,6 +13,7 @@ import { Text } from '../components/app/Text';
 import { useCategoriesWithProgress, usePeriodSummary } from '../hooks/useAggregates';
 import { useNetWorth } from '../hooks/useAccounts';
 import { useBillsDueSoon } from '../hooks/useBills';
+import { useGoalsWithProgress } from '../hooks/useGoals';
 import { useCurrentPeriod } from '../hooks/usePeriods';
 import { useActiveProfile } from '../hooks/useProfiles';
 import type { TabScreenProps } from '../navigation/types';
@@ -29,6 +30,7 @@ export function DashboardScreen({ navigation }: Props) {
   const { data: categories } = useCategoriesWithProgress(period?.id);
   const { data: netWorth } = useNetWorth(profile?.id);
   const { data: billsDueSoon } = useBillsDueSoon(profile?.id, 3);
+  const { data: goals } = useGoalsWithProgress(profile?.id);
   const symbol = profile?.currency_symbol ?? 'Rs';
   const [showAddExpense, setShowAddExpense] = useState(false);
 
@@ -215,6 +217,40 @@ export function DashboardScreen({ navigation }: Props) {
               </Text>
             </Pressable>
           ))}
+        </>
+      ) : null}
+
+      {(goals ?? []).length > 0 ? (
+        <>
+          <View className="flex-row items-baseline justify-between mt-6 mb-3 px-0.5">
+            <Text variant="monoLabel">Goals</Text>
+            <Pressable onPress={() => navigation.navigate('Goals')}>
+              <Text variant="mono" className="font-mono-bold text-[11px] text-primary">
+                VIEW ALL →
+              </Text>
+            </Pressable>
+          </View>
+
+          <View className="rounded-[20px] border border-border bg-card px-4 pt-[15px] pb-3.5 mb-2.5">
+            {(goals ?? []).map((goal, i) => {
+              const fraction = goal.target_amount > 0 ? goal.contributed / goal.target_amount : 0;
+              return (
+                <View key={goal.id} style={{ marginTop: i === 0 ? 0 : 14 }}>
+                  <View className="flex-row items-center justify-between">
+                    <Text style={{ fontSize: 12, fontWeight: '600' }} numberOfLines={1}>
+                      {goal.name}
+                    </Text>
+                    <Text variant="mono" className="text-[10px] text-faint">
+                      {formatAmount(goal.contributed, symbol)} / {formatAmount(goal.target_amount, symbol)}
+                    </Text>
+                  </View>
+                  <View className="mt-2">
+                    <Bar fraction={fraction} color={goal.color} height={5} />
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         </>
       ) : null}
 

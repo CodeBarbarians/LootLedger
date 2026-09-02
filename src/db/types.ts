@@ -158,6 +158,25 @@ export interface BillPayment {
   paid_at: string;
 }
 
+export interface Goal {
+  id: number;
+  profile_id: number;
+  name: string;
+  target_amount: number;
+  target_date: string | null;
+  color: string;
+  archived: number; // 0 | 1
+  created_at: string;
+}
+
+export interface GoalContribution {
+  id: number;
+  goal_id: number;
+  amount: number;
+  note: string | null;
+  created_at: string;
+}
+
 // Derived / joined shapes used by the UI layer
 
 export interface CategoryWithProgress extends Category {
@@ -175,6 +194,10 @@ export interface BillWithStatus extends Bill {
   nextDueDate: string; // ISO date
   currentPeriodKey: string; // 'yyyy-MM' the next due date falls in
   paidForCurrentPeriod: boolean;
+}
+
+export interface GoalWithProgress extends Goal {
+  contributed: number;
 }
 
 export interface PeriodSummary {

@@ -75,11 +75,33 @@ CREATE TABLE IF NOT EXISTS transactions (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS accounts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  profile_id INTEGER NOT NULL REFERENCES budget_profiles(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'checking',
+  color TEXT NOT NULL DEFAULT '#FF5A1F',
+  is_liability INTEGER NOT NULL DEFAULT 0,
+  current_balance REAL NOT NULL DEFAULT 0,
+  archived INTEGER NOT NULL DEFAULT 0,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS account_balance_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  balance REAL NOT NULL,
+  recorded_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_allocations_period ON allocations(period_id);
 CREATE INDEX IF NOT EXISTS idx_subcategories_period ON subcategories(period_id, category_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_period ON transactions(period_id, category_id);
 CREATE INDEX IF NOT EXISTS idx_categories_profile ON categories(profile_id);
 CREATE INDEX IF NOT EXISTS idx_budget_periods_profile ON budget_periods(profile_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_profile ON accounts(profile_id);
+CREATE INDEX IF NOT EXISTS idx_account_balance_snapshots_account ON account_balance_snapshots(account_id);
 `;
 
 import { CATEGORY_PALETTE } from '../theme/colors';

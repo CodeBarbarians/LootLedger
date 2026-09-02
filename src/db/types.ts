@@ -1,6 +1,14 @@
 export type BudgetMode = 'percent' | 'amount';
 export type SubcategoryStatus = 'unpaid' | 'partial' | 'paid';
 export type CategoryKind = 'expense' | 'debt' | 'saving';
+export type AccountType =
+  | 'checking'
+  | 'savings'
+  | 'credit_card'
+  | 'cash'
+  | 'investment'
+  | 'loan'
+  | 'other';
 
 export interface Settings {
   id: number;
@@ -76,6 +84,26 @@ export interface Transaction {
   created_at: string;
 }
 
+export interface Account {
+  id: number;
+  profile_id: number;
+  name: string;
+  type: AccountType;
+  color: string;
+  is_liability: number; // 0 | 1
+  current_balance: number;
+  archived: number; // 0 | 1
+  sort_order: number;
+  created_at: string;
+}
+
+export interface AccountBalanceSnapshot {
+  id: number;
+  account_id: number;
+  balance: number;
+  recorded_at: string;
+}
+
 // Derived / joined shapes used by the UI layer
 
 export interface CategoryWithProgress extends Category {
@@ -98,4 +126,15 @@ export interface PeriodSummary {
   saved: number; // salary - totalSpent
   toSavings: number; // sum of allocated amount across 'saving' kind categories
   overCount: number; // number of categories spent past their allocation
+}
+
+export interface NetWorth {
+  assets: number;
+  liabilities: number;
+  netWorth: number;
+}
+
+export interface NetWorthMonthPoint {
+  monthKey: string; // '2026-09'
+  netWorth: number;
 }

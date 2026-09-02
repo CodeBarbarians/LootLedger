@@ -55,6 +55,13 @@ export function MasterDataScreen({ navigation }: Props) {
           value="→"
           valueColor={colors.accent}
           onPress={() => navigation.navigate('CategoryManagement')}
+        />
+        <Row
+          title="Accounts"
+          subtitle="Balances, net worth, archive"
+          value="→"
+          valueColor={colors.accent}
+          onPress={() => navigation.navigate('Accounts')}
           last
         />
       </View>

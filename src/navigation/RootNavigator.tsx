@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
+import { AccountsScreen } from '../screens/AccountsScreen';
 import { BudgetProfilesScreen } from '../screens/BudgetProfilesScreen';
 import { BudgetSetupScreen } from '../screens/BudgetSetupScreen';
 import { CategoryDetailScreen } from '../screens/CategoryDetailScreen';
@@ -46,6 +47,7 @@ export function RootNavigator() {
       <Stack.Screen name="CategoryManagement" component={CategoryManagementScreen} />
       <Stack.Screen name="BudgetProfiles" component={BudgetProfilesScreen} />
       <Stack.Screen name="MasterData" component={MasterDataScreen} />
+      <Stack.Screen name="Accounts" component={AccountsScreen} />
     </Stack.Navigator>
   );
 }

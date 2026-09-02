@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { CREATE_TABLES_SQL } from './schema';
 
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -20,7 +20,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       `INSERT OR IGNORE INTO settings (id, active_profile_id, last_backup_at)
        VALUES (1, NULL, NULL)`
     );
-    currentVersion = 3;
+    currentVersion = 4;
   }
 
   if (currentVersion === 1) {
@@ -157,14 +157,46 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         // version marker commit (or roll back) atomically — otherwise a process kill
         // between COMMIT and this PRAGMA would re-run this block on next launch against
         // a database that already has the profile_id column, aborting with
-        // "duplicate column name" and breaking startup permanently.
-        await db.execAsync(`PRAGMA user_version = ${DB_VERSION}`);
+        // "duplicate column name" and breaking startup permanently. Hardcoded to 3 (not
+        // DB_VERSION) — this step only finishes the v2->v3 rebuild; later steps still
+        // need to run before the db is at DB_VERSION.
+        await db.execAsync('PRAGMA user_version = 3');
       });
     } finally {
       await db.execAsync('PRAGMA foreign_keys = ON');
     }
 
     currentVersion = 3;
+  }
+
+  if (currentVersion === 3) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS accounts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        profile_id INTEGER NOT NULL REFERENCES budget_profiles(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'checking',
+        color TEXT NOT NULL DEFAULT '#FF5A1F',
+        is_liability INTEGER NOT NULL DEFAULT 0,
+        current_balance REAL NOT NULL DEFAULT 0,
+        archived INTEGER NOT NULL DEFAULT 0,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      )
+    `);
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS account_balance_snapshots (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        balance REAL NOT NULL,
+        recorded_at TEXT NOT NULL
+      )
+    `);
+    await db.execAsync('CREATE INDEX IF NOT EXISTS idx_accounts_profile ON accounts(profile_id)');
+    await db.execAsync(
+      'CREATE INDEX IF NOT EXISTS idx_account_balance_snapshots_account ON account_balance_snapshots(account_id)'
+    );
+    currentVersion = 4;
   }
 
   await db.execAsync(`PRAGMA user_version = ${DB_VERSION}`);

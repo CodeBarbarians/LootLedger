@@ -10,6 +10,7 @@ import { Screen } from '../components/app/Screen';
 import { StatCell } from '../components/app/StatCell';
 import { Text } from '../components/app/Text';
 import { useCategoriesWithProgress, usePeriodSummary } from '../hooks/useAggregates';
+import { useNetWorth } from '../hooks/useAccounts';
 import { useCurrentPeriod } from '../hooks/usePeriods';
 import { useActiveProfile } from '../hooks/useProfiles';
 import type { TabScreenProps } from '../navigation/types';
@@ -24,6 +25,7 @@ export function DashboardScreen({ navigation }: Props) {
   const { data: period, isLoading: periodLoading, bounds } = useCurrentPeriod(profile?.id, profile?.cycle_start_day ?? 1);
   const { data: summary } = usePeriodSummary(profile?.id, period?.id);
   const { data: categories } = useCategoriesWithProgress(period?.id);
+  const { data: netWorth } = useNetWorth(profile?.id);
   const symbol = profile?.currency_symbol ?? 'Rs';
   const [showAddExpense, setShowAddExpense] = useState(false);
 
@@ -145,6 +147,20 @@ export function DashboardScreen({ navigation }: Props) {
             className="flex-1 pl-3 border-l border-border"
           />
         </View>
+
+        <Pressable
+          onPress={() => navigation.navigate('Accounts')}
+          className="flex-row items-center justify-between mt-4 pt-4 border-t border-border active:opacity-70"
+        >
+          <StatCell
+            label="NET WORTH"
+            value={formatAmount(netWorth?.netWorth ?? 0, symbol)}
+            color={(netWorth?.netWorth ?? 0) < 0 ? colors.danger : colors.textPrimary}
+          />
+          <Text variant="mono" className="font-mono-bold text-[10px] text-primary">
+            ACCOUNTS →
+          </Text>
+        </Pressable>
       </View>
 
       <View className="flex-row gap-2.5 mt-3">

@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { AddItemSheet } from '../components/app/AddItemSheet';
 import { CTAButton } from '../components/app/CTAButton';
 import { Pill } from '../components/app/Pill';
 import { Screen } from '../components/app/Screen';
@@ -45,8 +46,7 @@ export function CategoryManagementScreen({ navigation }: Props) {
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [name, setName] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [addSheetOpen, setAddSheetOpen] = useState(false);
 
   const selected = categories?.find((c) => c.id === selectedId) ?? null;
 
@@ -87,12 +87,9 @@ export function CategoryManagementScreen({ navigation }: Props) {
     }
   }
 
-  async function submitNewCategory() {
-    if (!newName.trim()) return;
+  async function submitNewCategory(newName: string) {
     const color = CATEGORY_PALETTE[(categories?.length ?? 0) % CATEGORY_PALETTE.length];
-    const id = await createCategory.mutateAsync({ name: newName.trim(), color, kind: 'expense' });
-    setNewName('');
-    setCreating(false);
+    const id = await createCategory.mutateAsync({ name: newName, color, kind: 'expense' });
     setSelectedId(id);
     show('Category added');
   }
@@ -101,7 +98,7 @@ export function CategoryManagementScreen({ navigation }: Props) {
     <Screen onBack={() => navigation.goBack()} topBarTitle="Categories" scroll={false}>
       <SectionLabel number="06" label="CATEGORIES" title="Manage categories" />
 
-      <View style={{ flex: 1, flexDirection: 'row', gap: 12 }}>
+      <View style={{ flex: 1, flexDirection: 'row' }}>
         {/* Sidebar */}
         <View style={{ width: 104 }}>
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -112,8 +109,10 @@ export function CategoryManagementScreen({ navigation }: Props) {
                   key={c.id}
                   onPress={() => setSelectedId(c.id)}
                   style={{
+                    flexDirection: 'row',
                     paddingVertical: 10,
-                    paddingHorizontal: 8,
+                    paddingLeft: 10,
+                    paddingRight: 8,
                     borderRadius: 12,
                     marginBottom: 4,
                     backgroundColor: active ? colors.cardInset : 'transparent',
@@ -122,67 +121,44 @@ export function CategoryManagementScreen({ navigation }: Props) {
                     opacity: c.archived ? 0.4 : 1,
                   }}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: c.color }} />
-                    <Text
-                      style={{ fontSize: 11, fontWeight: '600', flex: 1, color: active ? colors.textPrimary : colors.textMuted }}
-                      numberOfLines={2}
-                    >
-                      {c.name}
-                    </Text>
-                  </View>
+                  <View
+                    style={{
+                      width: 3,
+                      borderRadius: 2,
+                      marginRight: 8,
+                      backgroundColor: c.color,
+                    }}
+                  />
+                  <Text
+                    style={{ fontSize: 11, fontWeight: '600', flex: 1, lineHeight: 15, color: active ? colors.textPrimary : colors.textMuted }}
+                    numberOfLines={2}
+                  >
+                    {c.name}
+                  </Text>
                 </Pressable>
               );
             })}
 
-            {creating ? (
-              <View style={{ marginTop: 4 }}>
-                <TextInput
-                  value={newName}
-                  onChangeText={setNewName}
-                  placeholder="Name"
-                  placeholderTextColor={colors.placeholder}
-                  autoFocus
-                  onSubmitEditing={submitNewCategory}
-                  style={{
-                    height: 32,
-                    borderWidth: 1,
-                    borderColor: colors.borderStrong,
-                    borderRadius: 8,
-                    paddingHorizontal: 8,
-                    color: colors.textPrimary,
-                    fontFamily: 'SpaceGrotesk_500Medium',
-                    fontSize: 12,
-                    includeFontPadding: false,
-                    textAlignVertical: 'center',
-                  }}
-                />
-                <Pressable onPress={submitNewCategory} style={{ marginTop: 6 }}>
-                  <Text variant="mono" className="font-mono-bold text-[10px] text-primary" style={{ textAlign: 'center' }}>
-                    ADD
-                  </Text>
-                </Pressable>
-              </View>
-            ) : (
-              <Pressable
-                onPress={() => setCreating(true)}
-                style={{
-                  paddingVertical: 10,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderStyle: 'dashed',
-                  borderColor: colors.borderStrong,
-                  alignItems: 'center',
-                  marginTop: 4,
-                }}
-              >
-                <Text variant="mono" className="font-mono-bold text-[10px] text-faint">
-                  + NEW
-                </Text>
-              </Pressable>
-            )}
+            <Pressable
+              onPress={() => setAddSheetOpen(true)}
+              style={{
+                paddingVertical: 10,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderStyle: 'dashed',
+                borderColor: colors.borderStrong,
+                alignItems: 'center',
+                marginTop: 4,
+              }}
+            >
+              <Text variant="mono" className="font-mono-bold text-[10px] text-faint">
+                + NEW
+              </Text>
+            </Pressable>
           </ScrollView>
         </View>
+
+        <View style={{ width: 1, backgroundColor: colors.divider, marginHorizontal: 12 }} />
 
         {/* Detail panel */}
         <View style={{ flex: 1 }}>
@@ -200,72 +176,83 @@ export function CategoryManagementScreen({ navigation }: Props) {
                 </Text>
               ) : null}
 
-              <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
-                NAME
-              </Text>
               <View
                 style={{
-                  marginTop: 6,
-                  height: 40,
+                  marginTop: 16,
                   borderWidth: 1,
                   borderColor: colors.borderStrong,
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  backgroundColor: colors.background,
-                  justifyContent: 'center',
+                  borderRadius: 16,
+                  backgroundColor: colors.card,
+                  padding: 16,
                 }}
               >
-                <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  onBlur={saveName}
-                  onSubmitEditing={saveName}
+                <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+                  NAME
+                </Text>
+                <View
                   style={{
+                    marginTop: 6,
                     height: 40,
-                    padding: 0,
-                    color: colors.textPrimary,
-                    fontFamily: 'SpaceGrotesk_600SemiBold',
-                    fontSize: 14,
-                    includeFontPadding: false,
-                    textAlignVertical: 'center',
+                    borderWidth: 1,
+                    borderColor: colors.borderStrong,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    backgroundColor: colors.background,
+                    justifyContent: 'center',
                   }}
-                />
-              </View>
-
-              <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
-                COLOR
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
-                {CATEGORY_PALETTE.map((c) => (
-                  <Pressable
-                    key={c}
-                    onPress={() => setColor(c)}
+                >
+                  <TextInput
+                    value={name}
+                    onChangeText={setName}
+                    onBlur={saveName}
+                    onSubmitEditing={saveName}
                     style={{
-                      width: 30,
-                      height: 30,
-                      borderRadius: 15,
-                      backgroundColor: c,
-                      borderWidth: selected.color === c ? 3 : 0,
-                      borderColor: colors.textPrimary,
+                      height: 40,
+                      padding: 0,
+                      color: colors.textPrimary,
+                      fontFamily: 'SpaceGrotesk_600SemiBold',
+                      fontSize: 14,
+                      includeFontPadding: false,
+                      textAlignVertical: 'center',
                     }}
                   />
-                ))}
-              </View>
+                </View>
 
-              <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
-                TYPE
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                {(Object.keys(KIND_LABEL) as CategoryKind[]).map((k) => (
-                  <Pill
-                    key={k}
-                    label={KIND_LABEL[k]}
-                    size="sm"
-                    active={selected.kind === k}
-                    activeColor={KIND_COLOR[k]}
-                    onPress={() => setKind(k)}
-                  />
-                ))}
+                <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
+                  COLOR
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+                  {CATEGORY_PALETTE.map((c) => (
+                    <Pressable
+                      key={c}
+                      onPress={() => setColor(c)}
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 15,
+                        backgroundColor: c,
+                        borderWidth: selected.color === c ? 3 : 0,
+                        borderColor: colors.textPrimary,
+                      }}
+                    />
+                  ))}
+                </View>
+
+                <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
+                  TYPE
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                  {(Object.keys(KIND_LABEL) as CategoryKind[]).map((k) => (
+                    <Pill
+                      key={k}
+                      label={KIND_LABEL[k]}
+                      size="sm"
+                      active={selected.kind === k}
+                      activeColor={KIND_COLOR[k]}
+                      onPress={() => setKind(k)}
+                    />
+                  ))}
+                </View>
               </View>
 
               <CTAButton
@@ -285,6 +272,14 @@ export function CategoryManagementScreen({ navigation }: Props) {
           )}
         </View>
       </View>
+
+      <AddItemSheet
+        isOpen={addSheetOpen}
+        onClose={() => setAddSheetOpen(false)}
+        title="NEW CATEGORY"
+        placeholder="e.g. Groceries"
+        onSubmit={submitNewCategory}
+      />
     </Screen>
   );
 }

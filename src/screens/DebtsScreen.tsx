@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { AddItemSheet } from '../components/app/AddItemSheet';
 import { CTAButton } from '../components/app/CTAButton';
 import { DebtPaymentSheet } from '../components/app/DebtPaymentSheet';
 import { Pill } from '../components/app/Pill';
@@ -87,8 +88,7 @@ export function DebtsScreen({ navigation }: Props) {
   const [principalBalance, setPrincipalBalance] = useState('');
   const [aprPercent, setAprPercent] = useState('');
   const [minimumPayment, setMinimumPayment] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [addSheetOpen, setAddSheetOpen] = useState(false);
   const [paymentSheetOpen, setPaymentSheetOpen] = useState(false);
   const [extraPayment, setExtraPayment] = useState('');
 
@@ -162,18 +162,15 @@ export function DebtsScreen({ navigation }: Props) {
     }
   }
 
-  async function submitNewDebt() {
-    if (!newName.trim()) return;
+  async function submitNewDebt(newName: string) {
     const id = await createDebt.mutateAsync({
-      name: newName.trim(),
+      name: newName,
       kind: 'credit_card',
       principalBalance: 0,
       interestRateApr: 0,
       minimumPayment: 0,
       accountId: null,
     });
-    setNewName('');
-    setCreating(false);
     setSelectedId(id);
     show('Debt added');
   }
@@ -236,7 +233,7 @@ export function DebtsScreen({ navigation }: Props) {
         </View>
       </View>
 
-      <View style={{ flex: 1, flexDirection: 'row', gap: 12 }}>
+      <View style={{ flex: 1, flexDirection: 'row' }}>
         {/* Sidebar */}
         <View style={{ width: 112 }}>
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -248,7 +245,7 @@ export function DebtsScreen({ navigation }: Props) {
                   onPress={() => setSelectedId(d.id)}
                   style={{
                     paddingVertical: 10,
-                    paddingHorizontal: 8,
+                    paddingHorizontal: 10,
                     borderRadius: 12,
                     marginBottom: 4,
                     backgroundColor: active ? colors.cardInset : 'transparent',
@@ -270,54 +267,26 @@ export function DebtsScreen({ navigation }: Props) {
               );
             })}
 
-            {creating ? (
-              <View style={{ marginTop: 4 }}>
-                <TextInput
-                  value={newName}
-                  onChangeText={setNewName}
-                  placeholder="Name"
-                  placeholderTextColor={colors.placeholder}
-                  autoFocus
-                  onSubmitEditing={submitNewDebt}
-                  style={{
-                    height: 32,
-                    borderWidth: 1,
-                    borderColor: colors.borderStrong,
-                    borderRadius: 8,
-                    paddingHorizontal: 8,
-                    color: colors.textPrimary,
-                    fontFamily: 'SpaceGrotesk_500Medium',
-                    fontSize: 12,
-                    includeFontPadding: false,
-                    textAlignVertical: 'center',
-                  }}
-                />
-                <Pressable onPress={submitNewDebt} style={{ marginTop: 6 }}>
-                  <Text variant="mono" className="font-mono-bold text-[10px] text-primary" style={{ textAlign: 'center' }}>
-                    ADD
-                  </Text>
-                </Pressable>
-              </View>
-            ) : (
-              <Pressable
-                onPress={() => setCreating(true)}
-                style={{
-                  paddingVertical: 10,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderStyle: 'dashed',
-                  borderColor: colors.borderStrong,
-                  alignItems: 'center',
-                  marginTop: 4,
-                }}
-              >
-                <Text variant="mono" className="font-mono-bold text-[10px] text-faint">
-                  + NEW
-                </Text>
-              </Pressable>
-            )}
+            <Pressable
+              onPress={() => setAddSheetOpen(true)}
+              style={{
+                paddingVertical: 10,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderStyle: 'dashed',
+                borderColor: colors.borderStrong,
+                alignItems: 'center',
+                marginTop: 4,
+              }}
+            >
+              <Text variant="mono" className="font-mono-bold text-[10px] text-faint">
+                + NEW
+              </Text>
+            </Pressable>
           </ScrollView>
         </View>
+
+        <View style={{ width: 1, backgroundColor: colors.divider, marginHorizontal: 12 }} />
 
         {/* Detail panel */}
         <View style={{ flex: 1 }}>
@@ -332,185 +301,196 @@ export function DebtsScreen({ navigation }: Props) {
                 </Text>
               ) : null}
 
-              <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
-                NAME
-              </Text>
               <View
                 style={{
-                  marginTop: 6,
-                  height: 40,
+                  marginTop: 16,
                   borderWidth: 1,
                   borderColor: colors.borderStrong,
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  backgroundColor: colors.background,
-                  justifyContent: 'center',
+                  borderRadius: 16,
+                  backgroundColor: colors.card,
+                  padding: 16,
                 }}
               >
-                <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  onBlur={saveName}
-                  onSubmitEditing={saveName}
-                  style={{
-                    height: 40,
-                    padding: 0,
-                    color: colors.textPrimary,
-                    fontFamily: 'SpaceGrotesk_600SemiBold',
-                    fontSize: 14,
-                    includeFontPadding: false,
-                    textAlignVertical: 'center',
-                  }}
-                />
-              </View>
-
-              <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
-                PRINCIPAL BALANCE · {symbol}
-              </Text>
-              <View
-                style={{
-                  marginTop: 6,
-                  height: 40,
-                  borderWidth: 1,
-                  borderColor: colors.borderStrong,
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  backgroundColor: colors.background,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <Text variant="mono" className="text-faint" style={{ fontSize: 14 }}>
-                  {symbol}
+                <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+                  NAME
                 </Text>
-                <TextInput
-                  value={principalBalance}
-                  onChangeText={setPrincipalBalance}
-                  onBlur={savePrincipal}
-                  onSubmitEditing={savePrincipal}
-                  keyboardType="decimal-pad"
+                <View
                   style={{
-                    flex: 1,
+                    marginTop: 6,
                     height: 40,
-                    padding: 0,
-                    color: colors.textPrimary,
-                    fontFamily: 'SpaceMono_700Bold',
-                    fontSize: 14,
-                    includeFontPadding: false,
-                    textAlignVertical: 'center',
+                    borderWidth: 1,
+                    borderColor: colors.borderStrong,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    backgroundColor: colors.background,
+                    justifyContent: 'center',
                   }}
-                />
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Text variant="mono" className="text-[9px] tracking-widest text-faint">
-                    APR %
-                  </Text>
-                  <View
+                >
+                  <TextInput
+                    value={name}
+                    onChangeText={setName}
+                    onBlur={saveName}
+                    onSubmitEditing={saveName}
                     style={{
-                      marginTop: 6,
                       height: 40,
-                      borderWidth: 1,
-                      borderColor: colors.borderStrong,
-                      borderRadius: 12,
-                      paddingHorizontal: 12,
-                      backgroundColor: colors.background,
-                      justifyContent: 'center',
+                      padding: 0,
+                      color: colors.textPrimary,
+                      fontFamily: 'SpaceGrotesk_600SemiBold',
+                      fontSize: 14,
+                      includeFontPadding: false,
+                      textAlignVertical: 'center',
                     }}
-                  >
-                    <TextInput
-                      value={aprPercent}
-                      onChangeText={setAprPercent}
-                      onBlur={saveApr}
-                      onSubmitEditing={saveApr}
-                      keyboardType="decimal-pad"
+                  />
+                </View>
+
+                <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
+                  PRINCIPAL BALANCE · {symbol}
+                </Text>
+                <View
+                  style={{
+                    marginTop: 6,
+                    height: 40,
+                    borderWidth: 1,
+                    borderColor: colors.borderStrong,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    backgroundColor: colors.background,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <Text variant="mono" className="text-faint" style={{ fontSize: 14 }}>
+                    {symbol}
+                  </Text>
+                  <TextInput
+                    value={principalBalance}
+                    onChangeText={setPrincipalBalance}
+                    onBlur={savePrincipal}
+                    onSubmitEditing={savePrincipal}
+                    keyboardType="decimal-pad"
+                    style={{
+                      flex: 1,
+                      height: 40,
+                      padding: 0,
+                      color: colors.textPrimary,
+                      fontFamily: 'SpaceMono_700Bold',
+                      fontSize: 14,
+                      includeFontPadding: false,
+                      textAlignVertical: 'center',
+                    }}
+                  />
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+                      APR %
+                    </Text>
+                    <View
                       style={{
+                        marginTop: 6,
                         height: 40,
-                        padding: 0,
-                        color: colors.textPrimary,
-                        fontFamily: 'SpaceMono_700Bold',
-                        fontSize: 14,
-                        includeFontPadding: false,
-                        textAlignVertical: 'center',
+                        borderWidth: 1,
+                        borderColor: colors.borderStrong,
+                        borderRadius: 12,
+                        paddingHorizontal: 12,
+                        backgroundColor: colors.background,
+                        justifyContent: 'center',
                       }}
-                    />
+                    >
+                      <TextInput
+                        value={aprPercent}
+                        onChangeText={setAprPercent}
+                        onBlur={saveApr}
+                        onSubmitEditing={saveApr}
+                        keyboardType="decimal-pad"
+                        style={{
+                          height: 40,
+                          padding: 0,
+                          color: colors.textPrimary,
+                          fontFamily: 'SpaceMono_700Bold',
+                          fontSize: 14,
+                          includeFontPadding: false,
+                          textAlignVertical: 'center',
+                        }}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+                      MIN. PAYMENT · {symbol}
+                    </Text>
+                    <View
+                      style={{
+                        marginTop: 6,
+                        height: 40,
+                        borderWidth: 1,
+                        borderColor: colors.borderStrong,
+                        borderRadius: 12,
+                        paddingHorizontal: 12,
+                        backgroundColor: colors.background,
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <TextInput
+                        value={minimumPayment}
+                        onChangeText={setMinimumPayment}
+                        onBlur={saveMinimum}
+                        onSubmitEditing={saveMinimum}
+                        keyboardType="decimal-pad"
+                        style={{
+                          height: 40,
+                          padding: 0,
+                          color: colors.textPrimary,
+                          fontFamily: 'SpaceMono_700Bold',
+                          fontSize: 14,
+                          includeFontPadding: false,
+                          textAlignVertical: 'center',
+                        }}
+                      />
+                    </View>
                   </View>
                 </View>
 
-                <View style={{ flex: 1 }}>
-                  <Text variant="mono" className="text-[9px] tracking-widest text-faint">
-                    MIN. PAYMENT · {symbol}
-                  </Text>
-                  <View
-                    style={{
-                      marginTop: 6,
-                      height: 40,
-                      borderWidth: 1,
-                      borderColor: colors.borderStrong,
-                      borderRadius: 12,
-                      paddingHorizontal: 12,
-                      backgroundColor: colors.background,
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <TextInput
-                      value={minimumPayment}
-                      onChangeText={setMinimumPayment}
-                      onBlur={saveMinimum}
-                      onSubmitEditing={saveMinimum}
-                      keyboardType="decimal-pad"
-                      style={{
-                        height: 40,
-                        padding: 0,
-                        color: colors.textPrimary,
-                        fontFamily: 'SpaceMono_700Bold',
-                        fontSize: 14,
-                        includeFontPadding: false,
-                        textAlignVertical: 'center',
-                      }}
+                <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
+                  KIND
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                  {(Object.keys(KIND_LABEL) as DebtKind[]).map((k) => (
+                    <Pill
+                      key={k}
+                      label={KIND_LABEL[k]}
+                      size="sm"
+                      active={selected.kind === k}
+                      activeColor={colors.textPrimary}
+                      onPress={() => setKind(k)}
                     />
-                  </View>
+                  ))}
                 </View>
-              </View>
 
-              <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
-                KIND
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                {(Object.keys(KIND_LABEL) as DebtKind[]).map((k) => (
+                <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
+                  LINKED ACCOUNT
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
                   <Pill
-                    key={k}
-                    label={KIND_LABEL[k]}
+                    label="NONE"
                     size="sm"
-                    active={selected.kind === k}
-                    activeColor={colors.textPrimary}
-                    onPress={() => setKind(k)}
+                    active={selected.account_id == null}
+                    onPress={() => setLinkedAccount(null)}
                   />
-                ))}
-              </View>
-
-              <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
-                LINKED ACCOUNT
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                <Pill
-                  label="NONE"
-                  size="sm"
-                  active={selected.account_id == null}
-                  onPress={() => setLinkedAccount(null)}
-                />
-                {(accounts ?? []).map((a) => (
-                  <Pill
-                    key={a.id}
-                    label={a.name.toUpperCase()}
-                    size="sm"
-                    active={selected.account_id === a.id}
-                    activeColor={a.color}
-                    onPress={() => setLinkedAccount(a.id)}
-                  />
-                ))}
+                  {(accounts ?? []).map((a) => (
+                    <Pill
+                      key={a.id}
+                      label={a.name.toUpperCase()}
+                      size="sm"
+                      active={selected.account_id === a.id}
+                      activeColor={a.color}
+                      onPress={() => setLinkedAccount(a.id)}
+                    />
+                  ))}
+                </View>
               </View>
 
               <CTAButton
@@ -547,6 +527,14 @@ export function DebtsScreen({ navigation }: Props) {
           onSubmit={submitPayment}
         />
       ) : null}
+
+      <AddItemSheet
+        isOpen={addSheetOpen}
+        onClose={() => setAddSheetOpen(false)}
+        title="NEW DEBT"
+        placeholder="e.g. Visa card"
+        onSubmit={submitNewDebt}
+      />
     </Screen>
   );
 }

@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { AddItemSheet } from '../components/app/AddItemSheet';
 import { Bar } from '../components/app/Bar';
 import { CTAButton } from '../components/app/CTAButton';
 import { GoalContributionSheet } from '../components/app/GoalContributionSheet';
@@ -41,8 +42,7 @@ export function GoalsScreen({ navigation }: Props) {
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [targetDate, setTargetDate] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [addSheetOpen, setAddSheetOpen] = useState(false);
   const [contributionSheetOpen, setContributionSheetOpen] = useState(false);
 
   const selected = goals?.find((g) => g.id === selectedId) ?? null;
@@ -99,17 +99,14 @@ export function GoalsScreen({ navigation }: Props) {
     }
   }
 
-  async function submitNewGoal() {
-    if (!newName.trim()) return;
+  async function submitNewGoal(newName: string) {
     const color = CATEGORY_PALETTE[(goals?.length ?? 0) % CATEGORY_PALETTE.length];
     const id = await createGoal.mutateAsync({
-      name: newName.trim(),
+      name: newName,
       targetAmount: 0,
       targetDate: null,
       color,
     });
-    setNewName('');
-    setCreating(false);
     setSelectedId(id);
     show('Goal added');
   }
@@ -130,7 +127,7 @@ export function GoalsScreen({ navigation }: Props) {
     <Screen onBack={() => navigation.goBack()} topBarTitle="Goals" scroll={false}>
       <SectionLabel number="12" label="GOALS" title="Save toward something" />
 
-      <View style={{ flex: 1, flexDirection: 'row', gap: 12 }}>
+      <View style={{ flex: 1, flexDirection: 'row' }}>
         {/* Sidebar */}
         <View style={{ width: 112 }}>
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -141,8 +138,10 @@ export function GoalsScreen({ navigation }: Props) {
                   key={g.id}
                   onPress={() => setSelectedId(g.id)}
                   style={{
+                    flexDirection: 'row',
                     paddingVertical: 10,
-                    paddingHorizontal: 8,
+                    paddingLeft: 10,
+                    paddingRight: 8,
                     borderRadius: 12,
                     marginBottom: 4,
                     backgroundColor: active ? colors.cardInset : 'transparent',
@@ -151,70 +150,42 @@ export function GoalsScreen({ navigation }: Props) {
                     opacity: g.archived ? 0.4 : 1,
                   }}
                 >
-                  <View className="flex-row items-center gap-1.5">
-                    <View style={{ width: 7, height: 7, borderRadius: 2, backgroundColor: g.color }} />
+                  <View style={{ width: 3, borderRadius: 2, marginRight: 8, backgroundColor: g.color }} />
+                  <View style={{ flex: 1 }}>
                     <Text
-                      style={{ fontSize: 11, fontWeight: '600', color: active ? colors.textPrimary : colors.textMuted, flex: 1 }}
+                      style={{ fontSize: 11, fontWeight: '600', lineHeight: 15, color: active ? colors.textPrimary : colors.textMuted }}
                       numberOfLines={2}
                     >
                       {g.name}
                     </Text>
+                    <Text variant="mono" className="text-[9px] text-faint mt-1">
+                      {formatAmount(g.contributed, symbol)}
+                    </Text>
                   </View>
-                  <Text variant="mono" className="text-[9px] text-faint mt-1">
-                    {formatAmount(g.contributed, symbol)}
-                  </Text>
                 </Pressable>
               );
             })}
 
-            {creating ? (
-              <View style={{ marginTop: 4 }}>
-                <TextInput
-                  value={newName}
-                  onChangeText={setNewName}
-                  placeholder="Name"
-                  placeholderTextColor={colors.placeholder}
-                  autoFocus
-                  onSubmitEditing={submitNewGoal}
-                  style={{
-                    height: 32,
-                    borderWidth: 1,
-                    borderColor: colors.borderStrong,
-                    borderRadius: 8,
-                    paddingHorizontal: 8,
-                    color: colors.textPrimary,
-                    fontFamily: 'SpaceGrotesk_500Medium',
-                    fontSize: 12,
-                    includeFontPadding: false,
-                    textAlignVertical: 'center',
-                  }}
-                />
-                <Pressable onPress={submitNewGoal} style={{ marginTop: 6 }}>
-                  <Text variant="mono" className="font-mono-bold text-[10px] text-primary" style={{ textAlign: 'center' }}>
-                    ADD
-                  </Text>
-                </Pressable>
-              </View>
-            ) : (
-              <Pressable
-                onPress={() => setCreating(true)}
-                style={{
-                  paddingVertical: 10,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderStyle: 'dashed',
-                  borderColor: colors.borderStrong,
-                  alignItems: 'center',
-                  marginTop: 4,
-                }}
-              >
-                <Text variant="mono" className="font-mono-bold text-[10px] text-faint">
-                  + NEW
-                </Text>
-              </Pressable>
-            )}
+            <Pressable
+              onPress={() => setAddSheetOpen(true)}
+              style={{
+                paddingVertical: 10,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderStyle: 'dashed',
+                borderColor: colors.borderStrong,
+                alignItems: 'center',
+                marginTop: 4,
+              }}
+            >
+              <Text variant="mono" className="font-mono-bold text-[10px] text-faint">
+                + NEW
+              </Text>
+            </Pressable>
           </ScrollView>
         </View>
+
+        <View style={{ width: 1, backgroundColor: colors.divider, marginHorizontal: 12 }} />
 
         {/* Detail panel */}
         <View style={{ flex: 1 }}>
@@ -246,135 +217,146 @@ export function GoalsScreen({ navigation }: Props) {
                 ) : null}
               </View>
 
-              <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
-                NAME
-              </Text>
               <View
                 style={{
-                  marginTop: 6,
-                  height: 40,
+                  marginTop: 16,
                   borderWidth: 1,
                   borderColor: colors.borderStrong,
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  backgroundColor: colors.background,
-                  justifyContent: 'center',
+                  borderRadius: 16,
+                  backgroundColor: colors.card,
+                  padding: 16,
                 }}
               >
-                <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  onBlur={saveName}
-                  onSubmitEditing={saveName}
+                <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+                  NAME
+                </Text>
+                <View
                   style={{
+                    marginTop: 6,
                     height: 40,
-                    padding: 0,
-                    color: colors.textPrimary,
-                    fontFamily: 'SpaceGrotesk_600SemiBold',
-                    fontSize: 14,
-                    includeFontPadding: false,
-                    textAlignVertical: 'center',
+                    borderWidth: 1,
+                    borderColor: colors.borderStrong,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    backgroundColor: colors.background,
+                    justifyContent: 'center',
                   }}
-                />
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Text variant="mono" className="text-[9px] tracking-widest text-faint">
-                    TARGET AMOUNT · {symbol}
-                  </Text>
-                  <View
+                >
+                  <TextInput
+                    value={name}
+                    onChangeText={setName}
+                    onBlur={saveName}
+                    onSubmitEditing={saveName}
                     style={{
-                      marginTop: 6,
                       height: 40,
-                      borderWidth: 1,
-                      borderColor: colors.borderStrong,
-                      borderRadius: 12,
-                      paddingHorizontal: 12,
-                      backgroundColor: colors.background,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
-                  >
-                    <Text variant="mono" className="text-faint" style={{ fontSize: 14 }}>
-                      {symbol}
-                    </Text>
-                    <TextInput
-                      value={targetAmount}
-                      onChangeText={setTargetAmount}
-                      onBlur={saveTargetAmount}
-                      onSubmitEditing={saveTargetAmount}
-                      keyboardType="decimal-pad"
-                      style={{
-                        flex: 1,
-                        height: 40,
-                        padding: 0,
-                        color: colors.textPrimary,
-                        fontFamily: 'SpaceMono_700Bold',
-                        fontSize: 14,
-                        includeFontPadding: false,
-                        textAlignVertical: 'center',
-                      }}
-                    />
-                  </View>
-                </View>
-
-                <View style={{ flex: 1 }}>
-                  <Text variant="mono" className="text-[9px] tracking-widest text-faint">
-                    TARGET DATE
-                  </Text>
-                  <View
-                    style={{
-                      marginTop: 6,
-                      height: 40,
-                      borderWidth: 1,
-                      borderColor: colors.borderStrong,
-                      borderRadius: 12,
-                      paddingHorizontal: 12,
-                      backgroundColor: colors.background,
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <TextInput
-                      value={targetDate}
-                      onChangeText={setTargetDate}
-                      onBlur={saveTargetDate}
-                      onSubmitEditing={saveTargetDate}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor={colors.placeholder}
-                      style={{
-                        height: 40,
-                        padding: 0,
-                        color: colors.textPrimary,
-                        fontFamily: 'SpaceMono_700Bold',
-                        fontSize: 13,
-                        includeFontPadding: false,
-                        textAlignVertical: 'center',
-                      }}
-                    />
-                  </View>
-                </View>
-              </View>
-
-              <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
-                COLOR
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
-                {CATEGORY_PALETTE.map((c) => (
-                  <Pressable
-                    key={c}
-                    onPress={() => setColor(c)}
-                    style={{
-                      width: 30,
-                      height: 30,
-                      borderRadius: 15,
-                      backgroundColor: c,
-                      borderWidth: selected.color === c ? 3 : 0,
-                      borderColor: colors.textPrimary,
+                      padding: 0,
+                      color: colors.textPrimary,
+                      fontFamily: 'SpaceGrotesk_600SemiBold',
+                      fontSize: 14,
+                      includeFontPadding: false,
+                      textAlignVertical: 'center',
                     }}
                   />
-                ))}
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+                      TARGET AMOUNT · {symbol}
+                    </Text>
+                    <View
+                      style={{
+                        marginTop: 6,
+                        height: 40,
+                        borderWidth: 1,
+                        borderColor: colors.borderStrong,
+                        borderRadius: 12,
+                        paddingHorizontal: 12,
+                        backgroundColor: colors.background,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <Text variant="mono" className="text-faint" style={{ fontSize: 14 }}>
+                        {symbol}
+                      </Text>
+                      <TextInput
+                        value={targetAmount}
+                        onChangeText={setTargetAmount}
+                        onBlur={saveTargetAmount}
+                        onSubmitEditing={saveTargetAmount}
+                        keyboardType="decimal-pad"
+                        style={{
+                          flex: 1,
+                          height: 40,
+                          padding: 0,
+                          color: colors.textPrimary,
+                          fontFamily: 'SpaceMono_700Bold',
+                          fontSize: 14,
+                          includeFontPadding: false,
+                          textAlignVertical: 'center',
+                        }}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+                      TARGET DATE
+                    </Text>
+                    <View
+                      style={{
+                        marginTop: 6,
+                        height: 40,
+                        borderWidth: 1,
+                        borderColor: colors.borderStrong,
+                        borderRadius: 12,
+                        paddingHorizontal: 12,
+                        backgroundColor: colors.background,
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <TextInput
+                        value={targetDate}
+                        onChangeText={setTargetDate}
+                        onBlur={saveTargetDate}
+                        onSubmitEditing={saveTargetDate}
+                        placeholder="YYYY-MM-DD"
+                        placeholderTextColor={colors.placeholder}
+                        style={{
+                          height: 40,
+                          padding: 0,
+                          color: colors.textPrimary,
+                          fontFamily: 'SpaceMono_700Bold',
+                          fontSize: 13,
+                          includeFontPadding: false,
+                          textAlignVertical: 'center',
+                        }}
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
+                  COLOR
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+                  {CATEGORY_PALETTE.map((c) => (
+                    <Pressable
+                      key={c}
+                      onPress={() => setColor(c)}
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 15,
+                        backgroundColor: c,
+                        borderWidth: selected.color === c ? 3 : 0,
+                        borderColor: colors.textPrimary,
+                      }}
+                    />
+                  ))}
+                </View>
               </View>
 
               <CTAButton
@@ -434,6 +416,14 @@ export function GoalsScreen({ navigation }: Props) {
           onSubmit={submitContribution}
         />
       ) : null}
+
+      <AddItemSheet
+        isOpen={addSheetOpen}
+        onClose={() => setAddSheetOpen(false)}
+        title="NEW GOAL"
+        placeholder="e.g. Emergency fund"
+        onSubmit={submitNewGoal}
+      />
     </Screen>
   );
 }

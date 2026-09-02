@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { AddItemSheet } from '../components/app/AddItemSheet';
 import { CTAButton } from '../components/app/CTAButton';
 import { Pill } from '../components/app/Pill';
 import { Screen } from '../components/app/Screen';
@@ -60,8 +61,7 @@ export function BillsScreen({ navigation }: Props) {
   const [amount, setAmount] = useState('');
   const [dueDay, setDueDay] = useState('');
   const [reminderDaysBefore, setReminderDaysBefore] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [addSheetOpen, setAddSheetOpen] = useState(false);
 
   const selected = bills?.find((b) => b.id === selectedId) ?? null;
   const { data: payments } = useBillPayments(selected?.id);
@@ -148,10 +148,9 @@ export function BillsScreen({ navigation }: Props) {
     }
   }
 
-  async function submitNewBill() {
-    if (!newName.trim()) return;
+  async function submitNewBill(newName: string) {
     const newBill = {
-      name: newName.trim(),
+      name: newName,
       amount: 0,
       categoryId: null,
       accountId: null,
@@ -172,8 +171,6 @@ export function BillsScreen({ navigation }: Props) {
       },
       symbol
     );
-    setNewName('');
-    setCreating(false);
     setSelectedId(id);
     show('Bill added');
   }
@@ -195,7 +192,7 @@ export function BillsScreen({ navigation }: Props) {
     <Screen onBack={() => navigation.goBack()} topBarTitle="Bills" scroll={false}>
       <SectionLabel number="11" label="BILLS" title="Never miss a due date" />
 
-      <View style={{ flex: 1, flexDirection: 'row', gap: 12 }}>
+      <View style={{ flex: 1, flexDirection: 'row' }}>
         {/* Sidebar */}
         <View style={{ width: 112 }}>
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -207,7 +204,7 @@ export function BillsScreen({ navigation }: Props) {
                   onPress={() => setSelectedId(b.id)}
                   style={{
                     paddingVertical: 10,
-                    paddingHorizontal: 8,
+                    paddingHorizontal: 10,
                     borderRadius: 12,
                     marginBottom: 4,
                     backgroundColor: active ? colors.cardInset : 'transparent',
@@ -229,54 +226,26 @@ export function BillsScreen({ navigation }: Props) {
               );
             })}
 
-            {creating ? (
-              <View style={{ marginTop: 4 }}>
-                <TextInput
-                  value={newName}
-                  onChangeText={setNewName}
-                  placeholder="Name"
-                  placeholderTextColor={colors.placeholder}
-                  autoFocus
-                  onSubmitEditing={submitNewBill}
-                  style={{
-                    height: 32,
-                    borderWidth: 1,
-                    borderColor: colors.borderStrong,
-                    borderRadius: 8,
-                    paddingHorizontal: 8,
-                    color: colors.textPrimary,
-                    fontFamily: 'SpaceGrotesk_500Medium',
-                    fontSize: 12,
-                    includeFontPadding: false,
-                    textAlignVertical: 'center',
-                  }}
-                />
-                <Pressable onPress={submitNewBill} style={{ marginTop: 6 }}>
-                  <Text variant="mono" className="font-mono-bold text-[10px] text-primary" style={{ textAlign: 'center' }}>
-                    ADD
-                  </Text>
-                </Pressable>
-              </View>
-            ) : (
-              <Pressable
-                onPress={() => setCreating(true)}
-                style={{
-                  paddingVertical: 10,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderStyle: 'dashed',
-                  borderColor: colors.borderStrong,
-                  alignItems: 'center',
-                  marginTop: 4,
-                }}
-              >
-                <Text variant="mono" className="font-mono-bold text-[10px] text-faint">
-                  + NEW
-                </Text>
-              </Pressable>
-            )}
+            <Pressable
+              onPress={() => setAddSheetOpen(true)}
+              style={{
+                paddingVertical: 10,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderStyle: 'dashed',
+                borderColor: colors.borderStrong,
+                alignItems: 'center',
+                marginTop: 4,
+              }}
+            >
+              <Text variant="mono" className="font-mono-bold text-[10px] text-faint">
+                + NEW
+              </Text>
+            </Pressable>
           </ScrollView>
         </View>
+
+        <View style={{ width: 1, backgroundColor: colors.divider, marginHorizontal: 12 }} />
 
         {/* Detail panel */}
         <View style={{ flex: 1 }}>
@@ -295,207 +264,218 @@ export function BillsScreen({ navigation }: Props) {
                 </Text>
               )}
 
-              <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
-                NAME
-              </Text>
               <View
                 style={{
-                  marginTop: 6,
-                  height: 40,
+                  marginTop: 16,
                   borderWidth: 1,
                   borderColor: colors.borderStrong,
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  backgroundColor: colors.background,
-                  justifyContent: 'center',
+                  borderRadius: 16,
+                  backgroundColor: colors.card,
+                  padding: 16,
                 }}
               >
-                <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  onBlur={saveName}
-                  onSubmitEditing={saveName}
-                  style={{
-                    height: 40,
-                    padding: 0,
-                    color: colors.textPrimary,
-                    fontFamily: 'SpaceGrotesk_600SemiBold',
-                    fontSize: 14,
-                    includeFontPadding: false,
-                    textAlignVertical: 'center',
-                  }}
-                />
-              </View>
-
-              <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
-                AMOUNT · {symbol}
-              </Text>
-              <View
-                style={{
-                  marginTop: 6,
-                  height: 40,
-                  borderWidth: 1,
-                  borderColor: colors.borderStrong,
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  backgroundColor: colors.background,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <Text variant="mono" className="text-faint" style={{ fontSize: 14 }}>
-                  {symbol}
+                <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+                  NAME
                 </Text>
-                <TextInput
-                  value={amount}
-                  onChangeText={setAmount}
-                  onBlur={saveAmount}
-                  onSubmitEditing={saveAmount}
-                  keyboardType="decimal-pad"
+                <View
                   style={{
-                    flex: 1,
+                    marginTop: 6,
                     height: 40,
-                    padding: 0,
-                    color: colors.textPrimary,
-                    fontFamily: 'SpaceMono_700Bold',
-                    fontSize: 14,
-                    includeFontPadding: false,
-                    textAlignVertical: 'center',
+                    borderWidth: 1,
+                    borderColor: colors.borderStrong,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    backgroundColor: colors.background,
+                    justifyContent: 'center',
                   }}
-                />
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Text variant="mono" className="text-[9px] tracking-widest text-faint">
-                    DUE DAY
-                  </Text>
-                  <View
+                >
+                  <TextInput
+                    value={name}
+                    onChangeText={setName}
+                    onBlur={saveName}
+                    onSubmitEditing={saveName}
                     style={{
-                      marginTop: 6,
                       height: 40,
-                      borderWidth: 1,
-                      borderColor: colors.borderStrong,
-                      borderRadius: 12,
-                      paddingHorizontal: 12,
-                      backgroundColor: colors.background,
-                      justifyContent: 'center',
+                      padding: 0,
+                      color: colors.textPrimary,
+                      fontFamily: 'SpaceGrotesk_600SemiBold',
+                      fontSize: 14,
+                      includeFontPadding: false,
+                      textAlignVertical: 'center',
                     }}
-                  >
-                    <TextInput
-                      value={dueDay}
-                      onChangeText={setDueDay}
-                      onBlur={saveDueDay}
-                      onSubmitEditing={saveDueDay}
-                      keyboardType="number-pad"
+                  />
+                </View>
+
+                <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
+                  AMOUNT · {symbol}
+                </Text>
+                <View
+                  style={{
+                    marginTop: 6,
+                    height: 40,
+                    borderWidth: 1,
+                    borderColor: colors.borderStrong,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    backgroundColor: colors.background,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <Text variant="mono" className="text-faint" style={{ fontSize: 14 }}>
+                    {symbol}
+                  </Text>
+                  <TextInput
+                    value={amount}
+                    onChangeText={setAmount}
+                    onBlur={saveAmount}
+                    onSubmitEditing={saveAmount}
+                    keyboardType="decimal-pad"
+                    style={{
+                      flex: 1,
+                      height: 40,
+                      padding: 0,
+                      color: colors.textPrimary,
+                      fontFamily: 'SpaceMono_700Bold',
+                      fontSize: 14,
+                      includeFontPadding: false,
+                      textAlignVertical: 'center',
+                    }}
+                  />
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+                      DUE DAY
+                    </Text>
+                    <View
                       style={{
+                        marginTop: 6,
                         height: 40,
-                        padding: 0,
-                        color: colors.textPrimary,
-                        fontFamily: 'SpaceMono_700Bold',
-                        fontSize: 14,
-                        includeFontPadding: false,
-                        textAlignVertical: 'center',
+                        borderWidth: 1,
+                        borderColor: colors.borderStrong,
+                        borderRadius: 12,
+                        paddingHorizontal: 12,
+                        backgroundColor: colors.background,
+                        justifyContent: 'center',
                       }}
-                    />
+                    >
+                      <TextInput
+                        value={dueDay}
+                        onChangeText={setDueDay}
+                        onBlur={saveDueDay}
+                        onSubmitEditing={saveDueDay}
+                        keyboardType="number-pad"
+                        style={{
+                          height: 40,
+                          padding: 0,
+                          color: colors.textPrimary,
+                          fontFamily: 'SpaceMono_700Bold',
+                          fontSize: 14,
+                          includeFontPadding: false,
+                          textAlignVertical: 'center',
+                        }}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text variant="mono" className="text-[9px] tracking-widest text-faint">
+                      REMIND · DAYS BEFORE
+                    </Text>
+                    <View
+                      style={{
+                        marginTop: 6,
+                        height: 40,
+                        borderWidth: 1,
+                        borderColor: colors.borderStrong,
+                        borderRadius: 12,
+                        paddingHorizontal: 12,
+                        backgroundColor: colors.background,
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <TextInput
+                        value={reminderDaysBefore}
+                        onChangeText={setReminderDaysBefore}
+                        onBlur={saveReminderDaysBefore}
+                        onSubmitEditing={saveReminderDaysBefore}
+                        keyboardType="number-pad"
+                        style={{
+                          height: 40,
+                          padding: 0,
+                          color: colors.textPrimary,
+                          fontFamily: 'SpaceMono_700Bold',
+                          fontSize: 14,
+                          includeFontPadding: false,
+                          textAlignVertical: 'center',
+                        }}
+                      />
+                    </View>
                   </View>
                 </View>
 
-                <View style={{ flex: 1 }}>
-                  <Text variant="mono" className="text-[9px] tracking-widest text-faint">
-                    REMIND · DAYS BEFORE
-                  </Text>
-                  <View
-                    style={{
-                      marginTop: 6,
-                      height: 40,
-                      borderWidth: 1,
-                      borderColor: colors.borderStrong,
-                      borderRadius: 12,
-                      paddingHorizontal: 12,
-                      backgroundColor: colors.background,
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <TextInput
-                      value={reminderDaysBefore}
-                      onChangeText={setReminderDaysBefore}
-                      onBlur={saveReminderDaysBefore}
-                      onSubmitEditing={saveReminderDaysBefore}
-                      keyboardType="number-pad"
-                      style={{
-                        height: 40,
-                        padding: 0,
-                        color: colors.textPrimary,
-                        fontFamily: 'SpaceMono_700Bold',
-                        fontSize: 14,
-                        includeFontPadding: false,
-                        textAlignVertical: 'center',
-                      }}
+                <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
+                  RECURRENCE
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                  {(Object.keys(RECURRENCE_LABEL) as BillRecurrence[]).map((r) => (
+                    <Pill
+                      key={r}
+                      label={RECURRENCE_LABEL[r]}
+                      size="sm"
+                      active={selected.recurrence === r}
+                      activeColor={colors.textPrimary}
+                      onPress={() => setRecurrence(r)}
                     />
-                  </View>
+                  ))}
                 </View>
-              </View>
 
-              <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
-                RECURRENCE
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                {(Object.keys(RECURRENCE_LABEL) as BillRecurrence[]).map((r) => (
+                <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
+                  CATEGORY · LOGGED AS AN EXPENSE WHEN PAID
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
                   <Pill
-                    key={r}
-                    label={RECURRENCE_LABEL[r]}
+                    label="NONE"
                     size="sm"
-                    active={selected.recurrence === r}
-                    activeColor={colors.textPrimary}
-                    onPress={() => setRecurrence(r)}
+                    active={selected.category_id == null}
+                    onPress={() => setCategory(null)}
                   />
-                ))}
-              </View>
+                  {(categories ?? []).map((c) => (
+                    <Pill
+                      key={c.id}
+                      label={c.name.toUpperCase()}
+                      size="sm"
+                      active={selected.category_id === c.id}
+                      activeColor={c.color}
+                      onPress={() => setCategory(c.id)}
+                    />
+                  ))}
+                </View>
 
-              <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
-                CATEGORY · LOGGED AS AN EXPENSE WHEN PAID
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                <Pill
-                  label="NONE"
-                  size="sm"
-                  active={selected.category_id == null}
-                  onPress={() => setCategory(null)}
-                />
-                {(categories ?? []).map((c) => (
+                <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
+                  LINKED ACCOUNT
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
                   <Pill
-                    key={c.id}
-                    label={c.name.toUpperCase()}
+                    label="NONE"
                     size="sm"
-                    active={selected.category_id === c.id}
-                    activeColor={c.color}
-                    onPress={() => setCategory(c.id)}
+                    active={selected.account_id == null}
+                    onPress={() => setAccount(null)}
                   />
-                ))}
-              </View>
-
-              <Text variant="mono" className="text-[9px] tracking-widest text-faint mt-5">
-                LINKED ACCOUNT
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                <Pill
-                  label="NONE"
-                  size="sm"
-                  active={selected.account_id == null}
-                  onPress={() => setAccount(null)}
-                />
-                {(accounts ?? []).map((a) => (
-                  <Pill
-                    key={a.id}
-                    label={a.name.toUpperCase()}
-                    size="sm"
-                    active={selected.account_id === a.id}
-                    activeColor={a.color}
-                    onPress={() => setAccount(a.id)}
-                  />
-                ))}
+                  {(accounts ?? []).map((a) => (
+                    <Pill
+                      key={a.id}
+                      label={a.name.toUpperCase()}
+                      size="sm"
+                      active={selected.account_id === a.id}
+                      activeColor={a.color}
+                      onPress={() => setAccount(a.id)}
+                    />
+                  ))}
+                </View>
               </View>
 
               <CTAButton
@@ -523,6 +503,14 @@ export function BillsScreen({ navigation }: Props) {
           )}
         </View>
       </View>
+
+      <AddItemSheet
+        isOpen={addSheetOpen}
+        onClose={() => setAddSheetOpen(false)}
+        title="NEW BILL"
+        placeholder="e.g. Electricity"
+        onSubmit={submitNewBill}
+      />
     </Screen>
   );
 }

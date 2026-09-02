@@ -22,8 +22,8 @@ import {
 import { subscribeThemeTransition, waitForThemePaint, type ThemeTransitionJob } from './themeTransition';
 
 /** Collapse into the singularity, then blast the new theme back out. */
-const COLLAPSE_MS = 850;
-const RELEASE_MS = 850;
+const COLLAPSE_MS = 700;
+const RELEASE_MS = 750;
 /**
  * Dwell at full cover after the theme flips, until the app reports it has actually
  * repainted. Switching themes remounts the whole navigation tree — that repaint is
@@ -32,8 +32,8 @@ const RELEASE_MS = 850;
  * keeps the beat at the singularity even when the repaint is instant; the ceiling
  * stops a missing signal from stalling the animation.
  */
-const MIN_PEAK_HOLD_MS = 120;
-const MAX_PEAK_HOLD_MS = 900;
+const MIN_PEAK_HOLD_MS = 100;
+const MAX_PEAK_HOLD_MS = 700;
 /** Progress value at the peak — the frame the theme actually changes on. */
 const PEAK = 0.5;
 

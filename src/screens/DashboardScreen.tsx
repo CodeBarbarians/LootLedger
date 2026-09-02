@@ -17,15 +17,16 @@ import { useBillsDueSoon } from '../hooks/useBills';
 import { useGoalsWithProgress } from '../hooks/useGoals';
 import { useCurrentPeriod } from '../hooks/usePeriods';
 import { useActiveProfile } from '../hooks/useProfiles';
-import { useSettings, useUpdateSettings } from '../hooks/useSettings';
+import { useSetThemeMode, useSettings } from '../hooks/useSettings';
 import type { TabScreenProps } from '../navigation/types';
-import { colors } from '../theme';
+import { colors, useThemeRepaint } from '../theme';
 import { formatAmount, formatPercent } from '../utils/currency';
 import { formatPeriodLabel } from '../utils/cycle';
 
 type Props = TabScreenProps<'Dashboard'>;
 
 export function DashboardScreen({ navigation }: Props) {
+  useThemeRepaint();
   const { data: profile } = useActiveProfile();
   const { data: period, isLoading: periodLoading, bounds } = useCurrentPeriod(profile?.id, profile?.cycle_start_day ?? 1);
   const { data: summary } = usePeriodSummary(profile?.id, period?.id);
@@ -36,7 +37,7 @@ export function DashboardScreen({ navigation }: Props) {
   const symbol = profile?.currency_symbol ?? 'Rs';
   const [showAddExpense, setShowAddExpense] = useState(false);
   const { data: settings } = useSettings();
-  const updateSettings = useUpdateSettings();
+  const setThemeMode = useSetThemeMode();
 
   const themeButtonRef = useRef<View>(null);
 
@@ -45,9 +46,7 @@ export function DashboardScreen({ navigation }: Props) {
     const next = settings.theme_mode === 'light' ? 'dark' : 'light';
     // The write is deferred to the peak of the transition, so the theme flips
     // while the singularity covers the screen.
-    runThemeTransition(themeButtonRef, next, () => {
-      updateSettings.mutate({ theme_mode: next });
-    });
+    runThemeTransition(themeButtonRef, next, () => setThemeMode(next));
   }
 
   if (periodLoading) {

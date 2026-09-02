@@ -4,7 +4,7 @@ import { Screen } from '../components/app/Screen';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme';
+import { colors, useThemeRepaint } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MasterData'>;
 
@@ -43,6 +43,7 @@ function Row({
 }
 
 export function MasterDataScreen({ navigation }: Props) {
+  useThemeRepaint();
   return (
     <Screen onBack={() => navigation.goBack()} topBarTitle="Master data">
       <SectionLabel number="08" label="MASTER DATA" title="Manage the basics" />

@@ -38,6 +38,27 @@ export function useUpdateSettings() {
   });
 }
 
+/**
+ * Switches the theme with the repaint starting on this very frame.
+ *
+ * `useUpdateSettings` patches the cache optimistically too, but only from
+ * `onMutate` — React Query gets there a promise tick later, which measured ~180ms
+ * before the app even began re-rendering. The theme transition flips at the peak
+ * of an animation and every one of those milliseconds is time it has to keep the
+ * screen covered, so the cache is written synchronously here and the mutation is
+ * left to handle persistence.
+ */
+export function useSetThemeMode() {
+  const queryClient = useQueryClient();
+  const updateSettings = useUpdateSettings();
+  return (theme_mode: Settings['theme_mode']) => {
+    queryClient.setQueryData<Settings>(['settings'], (current) =>
+      current ? { ...current, theme_mode } : current
+    );
+    updateSettings.mutate({ theme_mode });
+  };
+}
+
 export function useSetActiveProfile() {
   const db = useSQLiteContext();
   const queryClient = useQueryClient();

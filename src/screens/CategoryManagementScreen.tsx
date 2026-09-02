@@ -18,7 +18,7 @@ import {
 } from '../hooks/useCategories';
 import { useActiveProfile } from '../hooks/useProfiles';
 import type { RootStackParamList } from '../navigation/types';
-import { CATEGORY_PALETTE, colors } from '../theme';
+import { CATEGORY_PALETTE, colors, useThemeRepaint } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CategoryManagement'>;
 
@@ -35,6 +35,7 @@ const KIND_COLOR: Record<CategoryKind, string> = {
 };
 
 export function CategoryManagementScreen({ navigation }: Props) {
+  useThemeRepaint();
   const { data: profile } = useActiveProfile();
   const profileId = profile?.id as number;
   const { data: categories } = useCategories(profileId, true);

@@ -29,7 +29,7 @@ import { useCurrentPeriod } from '../hooks/usePeriods';
 import { useActiveProfile } from '../hooks/useProfiles';
 import type { Bill, BillRecurrence } from '../db/types';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme';
+import { colors, useThemeRepaint } from '../theme';
 import { formatAmount } from '../utils/currency';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Bills'>;
@@ -41,6 +41,7 @@ const RECURRENCE_LABEL: Record<BillRecurrence, string> = {
 };
 
 export function BillsScreen({ navigation }: Props) {
+  useThemeRepaint();
   const { data: profile } = useActiveProfile();
   const profileId = profile?.id as number;
   const symbol = profile?.currency_symbol ?? 'Rs';

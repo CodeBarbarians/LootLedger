@@ -19,12 +19,13 @@ import {
 } from '../hooks/useSubcategories';
 import { useDeleteTransaction, useTransactions } from '../hooks/useTransactions';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme';
+import { colors, useThemeRepaint } from '../theme';
 import { formatAmount, formatPercent } from '../utils/currency';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CategoryDetail'>;
 
 export function CategoryDetailScreen({ route, navigation }: Props) {
+  useThemeRepaint();
   const { categoryId, periodId } = route.params;
   const { data: profile } = useActiveProfile();
   const { data: categories } = useCategories(profile?.id, true);

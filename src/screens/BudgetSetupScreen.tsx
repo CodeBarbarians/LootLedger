@@ -25,7 +25,7 @@ import { useLatestPeriod, usePeriod, useSaveBudgetSetup, toPeriodDates } from '.
 import { useActiveProfile, useCreateProfile } from '../hooks/useProfiles';
 import { useSetActiveProfile } from '../hooks/useSettings';
 import type { RootStackParamList } from '../navigation/types';
-import { CATEGORY_PALETTE, colors } from '../theme';
+import { CATEGORY_PALETTE, colors, useThemeRepaint } from '../theme';
 import { formatAmount, formatPercent } from '../utils/currency';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BudgetSetup'>;
@@ -40,6 +40,7 @@ interface Row {
 }
 
 export function BudgetSetupScreen({ route, navigation }: Props) {
+  useThemeRepaint();
   console.log(`[BudgetSetupScreen] render, params=${JSON.stringify(route.params)}`);
   const { mode, periodId } = route.params;
   const isOnboarding = mode === 'onboarding';

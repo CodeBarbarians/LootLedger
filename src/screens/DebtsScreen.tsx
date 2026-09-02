@@ -21,7 +21,7 @@ import {
 } from '../hooks/useDebts';
 import { useActiveProfile } from '../hooks/useProfiles';
 import type { RootStackParamList } from '../navigation/types';
-import { CATEGORY_PALETTE, colors } from '../theme';
+import { CATEGORY_PALETTE, colors, useThemeRepaint } from '../theme';
 import { formatAmount } from '../utils/currency';
 import { computePayoffProjections, type PayoffPlanDebt, type PayoffResult } from '../utils/payoff';
 
@@ -71,6 +71,7 @@ function PlanList({ title, result, symbol }: { title: string; result: PayoffResu
 }
 
 export function DebtsScreen({ navigation }: Props) {
+  useThemeRepaint();
   const { data: profile } = useActiveProfile();
   const profileId = profile?.id as number;
   const symbol = profile?.currency_symbol ?? 'Rs';

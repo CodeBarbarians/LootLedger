@@ -24,7 +24,7 @@ import {
 } from '../hooks/useAccounts';
 import { useActiveProfile } from '../hooks/useProfiles';
 import type { RootStackParamList } from '../navigation/types';
-import { CATEGORY_PALETTE, colors } from '../theme';
+import { CATEGORY_PALETTE, colors, useThemeRepaint } from '../theme';
 import { formatAmount } from '../utils/currency';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Accounts'>;
@@ -47,6 +47,7 @@ function monthKeyLabel(monthKey: string): string {
 }
 
 export function AccountsScreen({ navigation }: Props) {
+  useThemeRepaint();
   const { data: profile } = useActiveProfile();
   const profileId = profile?.id as number;
   const symbol = profile?.currency_symbol ?? 'Rs';

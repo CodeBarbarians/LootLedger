@@ -6,13 +6,14 @@ import { Text } from '../components/app/Text';
 import { useCategoriesWithProgress, usePeriodSummary } from '../hooks/useAggregates';
 import { useActiveProfile } from '../hooks/useProfiles';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme';
+import { colors, useThemeRepaint } from '../theme';
 import { formatAmount } from '../utils/currency';
 import { formatPeriodLabel } from '../utils/cycle';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'HistoryDetail'>;
 
 export function HistoryDetailScreen({ route, navigation }: Props) {
+  useThemeRepaint();
   const { periodId } = route.params;
   const { data: profile } = useActiveProfile();
   const { data: summary } = usePeriodSummary(profile?.id, periodId);

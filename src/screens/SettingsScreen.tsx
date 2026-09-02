@@ -10,9 +10,9 @@ import { useToast } from '../components/app/Toast';
 import { useCurrentPeriod } from '../hooks/usePeriods';
 import { useActiveProfile, useUpdateProfile } from '../hooks/useProfiles';
 import { useResetToDefaultBudget } from '../hooks/useReset';
-import { useSettings, useUpdateSettings } from '../hooks/useSettings';
+import { useSetThemeMode, useSettings, useUpdateSettings } from '../hooks/useSettings';
 import type { TabScreenProps } from '../navigation/types';
-import { colors } from '../theme';
+import { colors, useThemeRepaint } from '../theme';
 import { formatAmount } from '../utils/currency';
 
 type Props = TabScreenProps<'Settings'>;
@@ -55,11 +55,13 @@ function Row({
 }
 
 export function SettingsScreen({ navigation }: Props) {
+  useThemeRepaint();
   const { data: profile } = useActiveProfile();
   const { data: currentPeriod } = useCurrentPeriod(profile?.id, profile?.cycle_start_day ?? 1);
   const { data: settings } = useSettings();
   const updateProfile = useUpdateProfile();
   const updateSettings = useUpdateSettings();
+  const setThemeMode = useSetThemeMode();
   const resetToDefault = useResetToDefaultBudget(profile?.id as number);
   const { show } = useToast();
   const symbol = profile?.currency_symbol ?? 'Rs';
@@ -78,9 +80,7 @@ export function SettingsScreen({ navigation }: Props) {
     const next = settings.theme_mode === 'light' ? 'dark' : 'light';
     // The write is deferred to the peak of the transition, so the theme flips
     // while the singularity covers the screen.
-    runThemeTransition(themeRowRef, next, () => {
-      updateSettings.mutate({ theme_mode: next });
-    });
+    runThemeTransition(themeRowRef, next, () => setThemeMode(next));
   }
 
   async function toggleBiometricLock() {

@@ -10,12 +10,13 @@ import { useLatestPeriod } from '../hooks/usePeriods';
 import { useActiveProfile } from '../hooks/useProfiles';
 import { useSettings } from '../hooks/useSettings';
 import type { TabScreenProps } from '../navigation/types';
-import { colors } from '../theme';
+import { colors, useThemeRepaint } from '../theme';
 import { formatPeriodLabel } from '../utils/cycle';
 
 type Props = TabScreenProps<'Data'>;
 
 export function DataScreen({ navigation }: Props) {
+  useThemeRepaint();
   const { data: settings } = useSettings();
   const { data: profile } = useActiveProfile();
   const { data: stats } = useDataStats();

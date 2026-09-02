@@ -1,23 +1,23 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Appearance, View } from 'react-native';
 import { useSettings } from '../../hooks/useSettings';
-import { applyColorTheme, colors, type ThemeMode } from '../../theme';
+import { applyColorTheme, colors, ThemeModeProvider, type ThemeMode } from '../../theme';
 import { LockScreen } from './LockScreen';
 import { notifyThemePainted } from './themeTransition';
 
 interface AppGateProps {
-  onThemeModeChange: (mode: ThemeMode) => void;
-  children: (remountKey: string) => ReactNode;
+  children: ReactNode;
 }
 
 /**
  * Sits inside the SQLite/QueryClient providers (where `useSettings` works) and
  * handles the two things that must happen before the real app renders:
- *  - sync the mutable `colors` object to the persisted theme and tell App.tsx
- *    the active mode, so GluestackUIProvider/StatusBar/navigationTheme follow it
+ *  - apply the persisted theme — the mutable `colors` object, the colour scheme
+ *    NativeWind reads, and the context that re-renders everything styled from
+ *    them — all in one commit, and report when it has painted
  *  - gate all content behind a biometric unlock when the user has turned that on
  */
-export function AppGate({ onThemeModeChange, children }: AppGateProps) {
+export function AppGate({ children }: AppGateProps) {
   const { data: settings } = useSettings();
   const [unlocked, setUnlocked] = useState(false);
   const lastAppliedMode = useRef<ThemeMode | null>(null);
@@ -38,23 +38,13 @@ export function AppGate({ onThemeModeChange, children }: AppGateProps) {
 
   const mode = settings?.theme_mode;
 
-  useEffect(() => {
-    if (mode) onThemeModeChange(mode);
-  }, [mode, onThemeModeChange]);
-
-  // Tell the theme transition when the new theme is actually on screen, so it can
-  // hold its cover until then instead of guessing a duration. Two frames: the
-  // first is scheduled before the repaint, the second lands after it.
+  // Tell the theme transition when the new theme is on screen, so it can hold its
+  // cover until then instead of guessing a duration. This effect runs after the
+  // commit, and the frame callback lands once that commit has been drawn.
   useEffect(() => {
     if (!mode) return;
-    let second = 0;
-    const first = requestAnimationFrame(() => {
-      second = requestAnimationFrame(notifyThemePainted);
-    });
-    return () => {
-      cancelAnimationFrame(first);
-      if (second) cancelAnimationFrame(second);
-    };
+    const frame = requestAnimationFrame(notifyThemePainted);
+    return () => cancelAnimationFrame(frame);
   }, [mode]);
 
   if (!settings) {
@@ -69,5 +59,7 @@ export function AppGate({ onThemeModeChange, children }: AppGateProps) {
     return <LockScreen onUnlock={() => setUnlocked(true)} />;
   }
 
-  return <>{children(settings.theme_mode)}</>;
+  // Provided from here rather than App.tsx so subscribers re-render in the same
+  // commit that applies the palette above, instead of a render later.
+  return <ThemeModeProvider mode={settings.theme_mode}>{children}</ThemeModeProvider>;
 }

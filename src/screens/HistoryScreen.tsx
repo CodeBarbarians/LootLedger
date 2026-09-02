@@ -7,12 +7,13 @@ import { useHistoryTotals } from '../hooks/useAggregates';
 import { usePeriods } from '../hooks/usePeriods';
 import { useActiveProfile } from '../hooks/useProfiles';
 import type { TabScreenProps } from '../navigation/types';
-import { colors } from '../theme';
+import { colors, useThemeRepaint } from '../theme';
 import { formatAmount } from '../utils/currency';
 
 type Props = TabScreenProps<'History'>;
 
 export function HistoryScreen({ navigation }: Props) {
+  useThemeRepaint();
   const { data: profile } = useActiveProfile();
   const { data: periods } = usePeriods(profile?.id);
   const { data: totals } = useHistoryTotals(profile?.id);

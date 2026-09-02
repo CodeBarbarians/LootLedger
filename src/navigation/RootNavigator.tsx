@@ -11,13 +11,14 @@ import { GoalsScreen } from '../screens/GoalsScreen';
 import { HistoryDetailScreen } from '../screens/HistoryDetailScreen';
 import { MasterDataScreen } from '../screens/MasterDataScreen';
 import { useActiveProfile } from '../hooks/useProfiles';
-import { colors } from '../theme';
+import { colors, useThemeRepaint } from '../theme';
 import { TabNavigator } from './TabNavigator';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
+  useThemeRepaint();
   const { isLoading, needsOnboarding } = useActiveProfile();
   console.log(`[RootNavigator] render isLoading=${isLoading} needsOnboarding=${needsOnboarding}`);
 

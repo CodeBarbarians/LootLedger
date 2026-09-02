@@ -19,11 +19,12 @@ import {
 } from '../hooks/useProfiles';
 import { useSetActiveProfile } from '../hooks/useSettings';
 import type { RootStackParamList } from '../navigation/types';
-import { CATEGORY_PALETTE, colors } from '../theme';
+import { CATEGORY_PALETTE, colors, useThemeRepaint } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BudgetProfiles'>;
 
 export function BudgetProfilesScreen({ navigation }: Props) {
+  useThemeRepaint();
   const { data: profiles } = useProfiles(true);
   const { data: activeProfile } = useActiveProfile();
   const updateProfile = useUpdateProfile();

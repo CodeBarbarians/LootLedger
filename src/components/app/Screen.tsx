@@ -1,5 +1,6 @@
 import { KeyboardAvoidingView, Platform, ScrollView, View, type ViewProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '../../theme';
 import { TopBar } from './TopBar';
 
 interface ScreenProps extends ViewProps {
@@ -24,7 +25,10 @@ export function Screen({ scroll = true, onBack, topBarTitle, children, ...rest }
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      edges={['top', 'left', 'right']}
+    >
       {onBack ? <TopBar onBack={onBack} title={topBarTitle} /> : null}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

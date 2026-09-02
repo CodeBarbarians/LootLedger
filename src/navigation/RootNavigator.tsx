@@ -5,6 +5,7 @@ import { BudgetSetupScreen } from '../screens/BudgetSetupScreen';
 import { CategoryDetailScreen } from '../screens/CategoryDetailScreen';
 import { CategoryManagementScreen } from '../screens/CategoryManagementScreen';
 import { HistoryDetailScreen } from '../screens/HistoryDetailScreen';
+import { MasterDataScreen } from '../screens/MasterDataScreen';
 import { useActiveProfile } from '../hooks/useProfiles';
 import { colors } from '../theme';
 import { TabNavigator } from './TabNavigator';
@@ -44,6 +45,7 @@ export function RootNavigator() {
       <Stack.Screen name="HistoryDetail" component={HistoryDetailScreen} />
       <Stack.Screen name="CategoryManagement" component={CategoryManagementScreen} />
       <Stack.Screen name="BudgetProfiles" component={BudgetProfilesScreen} />
+      <Stack.Screen name="MasterData" component={MasterDataScreen} />
     </Stack.Navigator>
   );
 }

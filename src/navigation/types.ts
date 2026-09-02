@@ -9,6 +9,7 @@ export type RootStackParamList = {
   HistoryDetail: { periodId: number };
   CategoryManagement: undefined;
   BudgetProfiles: undefined;
+  MasterData: undefined;
 };
 
 export type MainTabsParamList = {

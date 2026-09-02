@@ -134,11 +134,11 @@ export function SettingsScreen({ navigation }: Props) {
           onPress={() => navigation.navigate('BudgetProfiles')}
         />
         <Row
-          title="Manage categories"
-          subtitle="Rename, recolor, retype, archive"
+          title="Master data"
+          subtitle="Categories, accounts, debts, bills, goals"
           value="→"
           valueColor={colors.accent}
-          onPress={() => navigation.navigate('CategoryManagement')}
+          onPress={() => navigation.navigate('MasterData')}
           last
         />
       </View>

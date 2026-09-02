@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS bills (
   profile_id INTEGER NOT NULL REFERENCES budget_profiles(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   amount REAL NOT NULL DEFAULT 0,
-  category_id INTEGER REFERENCES categories(id),
+  category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
   account_id INTEGER REFERENCES accounts(id),
   due_day INTEGER NOT NULL DEFAULT 1,
   recurrence TEXT NOT NULL DEFAULT 'monthly',

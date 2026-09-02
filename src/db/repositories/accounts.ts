@@ -136,20 +136,20 @@ export async function getNetWorth(db: SQLiteDatabase, profileId: number): Promis
   return { assets, liabilities, netWorth: assets - liabilities };
 }
 
-/** One point per of the last `months` calendar months, carrying each account's last known balance forward into months with no snapshot. */
+/** One point per of the last `months` calendar months, carrying each account's last known balance forward into months with no snapshot. Excludes archived accounts, matching getNetWorth() — archiving an account drops it from net worth and future tracking, so the trend's current-month point must agree with the headline figure. */
 export async function getNetWorthTrend(
   db: SQLiteDatabase,
   profileId: number,
   months = 6
 ): Promise<NetWorthMonthPoint[]> {
-  const accounts = await listAccounts(db, profileId, true);
+  const accounts = await listAccounts(db, profileId, false);
   if (accounts.length === 0) return [];
 
   const snapshots = await db.getAllAsync<{ account_id: number; balance: number; recorded_at: string }>(
     `SELECT s.account_id, s.balance, s.recorded_at
      FROM account_balance_snapshots s
      JOIN accounts a ON a.id = s.account_id
-     WHERE a.profile_id = ?
+     WHERE a.profile_id = ? AND a.archived = 0
      ORDER BY s.recorded_at ASC`,
     [profileId]
   );

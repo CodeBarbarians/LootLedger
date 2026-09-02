@@ -1,18 +1,23 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { CREATE_TABLES_SQL } from './schema';
 
-const DB_VERSION = 7;
+const DB_VERSION = 8;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   let currentVersion = row?.user_version ?? 0;
 
+  // PRAGMA foreign_keys is per-connection and defaults OFF in SQLite, so it must be
+  // turned on for every app launch's connection — not just the launch that runs a
+  // migration step. Do this before the early-return below, otherwise FK enforcement
+  // (and the ON DELETE CASCADE clauses relied on elsewhere, e.g. resetToDefaultBudget)
+  // silently never activates once the db is already at DB_VERSION.
+  await db.execAsync('PRAGMA journal_mode = WAL');
+  await db.execAsync('PRAGMA foreign_keys = ON');
+
   if (currentVersion >= DB_VERSION) {
     return;
   }
-
-  await db.execAsync('PRAGMA journal_mode = WAL');
-  await db.execAsync('PRAGMA foreign_keys = ON');
 
   if (currentVersion === 0) {
     await db.execAsync(CREATE_TABLES_SQL);
@@ -20,7 +25,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       `INSERT OR IGNORE INTO settings (id, active_profile_id, last_backup_at)
        VALUES (1, NULL, NULL)`
     );
-    currentVersion = 7;
+    currentVersion = 8;
   }
 
   if (currentVersion === 1) {
@@ -292,6 +297,54 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       'CREATE INDEX IF NOT EXISTS idx_goal_contributions_goal ON goal_contributions(goal_id)'
     );
     currentVersion = 7;
+  }
+
+  if (currentVersion === 7) {
+    // bills.category_id previously had no ON DELETE clause (default RESTRICT), so once FK
+    // enforcement is actually active, resetToDefaultBudget()'s `DELETE FROM categories` would
+    // throw for any profile with a bill assigned to a category. Rebuild bills with
+    // ON DELETE SET NULL so a category delete un-links the bill instead of failing or (with FKs
+    // off) leaving a dangling id behind. Table rebuild (not ALTER TABLE) because SQLite can't
+    // alter a column's foreign key clause in place.
+    await db.execAsync('PRAGMA foreign_keys = OFF');
+    try {
+      await db.withTransactionAsync(async () => {
+        await db.execAsync(`
+          CREATE TABLE bills_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            profile_id INTEGER NOT NULL REFERENCES budget_profiles(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            amount REAL NOT NULL DEFAULT 0,
+            category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+            account_id INTEGER REFERENCES accounts(id),
+            due_day INTEGER NOT NULL DEFAULT 1,
+            recurrence TEXT NOT NULL DEFAULT 'monthly',
+            reminder_days_before INTEGER NOT NULL DEFAULT 3,
+            archived INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
+          )
+        `);
+        await db.execAsync(`
+          INSERT INTO bills_new (id, profile_id, name, amount, category_id, account_id, due_day, recurrence, reminder_days_before, archived, created_at)
+          SELECT id, profile_id, name, amount, category_id, account_id, due_day, recurrence, reminder_days_before, archived, created_at FROM bills
+        `);
+        await db.execAsync('DROP TABLE bills');
+        await db.execAsync('ALTER TABLE bills_new RENAME TO bills');
+        await db.execAsync('CREATE INDEX IF NOT EXISTS idx_bills_profile ON bills(profile_id)');
+
+        const fkViolations = await db.getAllAsync('PRAGMA foreign_key_check');
+        if (fkViolations.length > 0) {
+          throw new Error(
+            `Migration v7->v8 produced foreign key violations: ${JSON.stringify(fkViolations)}`
+          );
+        }
+
+        await db.execAsync('PRAGMA user_version = 8');
+      });
+    } finally {
+      await db.execAsync('PRAGMA foreign_keys = ON');
+    }
+    currentVersion = 8;
   }
 
   await db.execAsync(`PRAGMA user_version = ${DB_VERSION}`);

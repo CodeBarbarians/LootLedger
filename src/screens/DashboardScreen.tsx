@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
@@ -11,6 +12,7 @@ import { StatCell } from '../components/app/StatCell';
 import { Text } from '../components/app/Text';
 import { useCategoriesWithProgress, usePeriodSummary } from '../hooks/useAggregates';
 import { useNetWorth } from '../hooks/useAccounts';
+import { useBillsDueSoon } from '../hooks/useBills';
 import { useCurrentPeriod } from '../hooks/usePeriods';
 import { useActiveProfile } from '../hooks/useProfiles';
 import type { TabScreenProps } from '../navigation/types';
@@ -26,6 +28,7 @@ export function DashboardScreen({ navigation }: Props) {
   const { data: summary } = usePeriodSummary(profile?.id, period?.id);
   const { data: categories } = useCategoriesWithProgress(period?.id);
   const { data: netWorth } = useNetWorth(profile?.id);
+  const { data: billsDueSoon } = useBillsDueSoon(profile?.id, 3);
   const symbol = profile?.currency_symbol ?? 'Rs';
   const [showAddExpense, setShowAddExpense] = useState(false);
 
@@ -181,6 +184,39 @@ export function DashboardScreen({ navigation }: Props) {
           </Text>
         </View>
       </View>
+
+      {(billsDueSoon ?? []).length > 0 ? (
+        <>
+          <View className="flex-row items-baseline justify-between mt-6 mb-3 px-0.5">
+            <Text variant="monoLabel">Bills due soon</Text>
+            <Pressable onPress={() => navigation.navigate('Bills')}>
+              <Text variant="mono" className="font-mono-bold text-[11px] text-primary">
+                VIEW ALL →
+              </Text>
+            </Pressable>
+          </View>
+
+          {(billsDueSoon ?? []).map((bill) => (
+            <Pressable
+              key={bill.id}
+              onPress={() => navigation.navigate('Bills')}
+              className="flex-row items-center justify-between rounded-[18px] border border-border bg-card px-4 py-3.5 mb-2.5 active:border-border-strong"
+            >
+              <View className="flex-1 min-w-0 mr-3">
+                <Text variant="subheading" numberOfLines={1}>
+                  {bill.name}
+                </Text>
+                <Text variant="mono" className="text-[10px] text-faint mt-1">
+                  DUE {format(new Date(bill.nextDueDate), 'MMM d').toUpperCase()}
+                </Text>
+              </View>
+              <Text variant="mono" className="font-mono-bold text-xs">
+                {formatAmount(bill.amount, symbol)}
+              </Text>
+            </Pressable>
+          ))}
+        </>
+      ) : null}
 
       <View className="flex-row items-baseline justify-between mt-6 mb-3 px-0.5">
         <Text variant="monoLabel">Categories</Text>

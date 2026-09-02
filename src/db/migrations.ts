@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { CREATE_TABLES_SQL } from './schema';
 
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -20,7 +20,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       `INSERT OR IGNORE INTO settings (id, active_profile_id, last_backup_at)
        VALUES (1, NULL, NULL)`
     );
-    currentVersion = 5;
+    currentVersion = 6;
   }
 
   if (currentVersion === 1) {
@@ -230,6 +230,39 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       'CREATE INDEX IF NOT EXISTS idx_debt_payments_debt ON debt_payments(debt_id)'
     );
     currentVersion = 5;
+  }
+
+  if (currentVersion === 5) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS bills (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        profile_id INTEGER NOT NULL REFERENCES budget_profiles(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL DEFAULT 0,
+        category_id INTEGER REFERENCES categories(id),
+        account_id INTEGER REFERENCES accounts(id),
+        due_day INTEGER NOT NULL DEFAULT 1,
+        recurrence TEXT NOT NULL DEFAULT 'monthly',
+        reminder_days_before INTEGER NOT NULL DEFAULT 3,
+        archived INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      )
+    `);
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS bill_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        bill_id INTEGER NOT NULL REFERENCES bills(id) ON DELETE CASCADE,
+        period_key TEXT NOT NULL,
+        amount_paid REAL NOT NULL,
+        transaction_id INTEGER REFERENCES transactions(id),
+        paid_at TEXT NOT NULL
+      )
+    `);
+    await db.execAsync('CREATE INDEX IF NOT EXISTS idx_bills_profile ON bills(profile_id)');
+    await db.execAsync(
+      'CREATE INDEX IF NOT EXISTS idx_bill_payments_bill ON bill_payments(bill_id)'
+    );
+    currentVersion = 6;
   }
 
   await db.execAsync(`PRAGMA user_version = ${DB_VERSION}`);

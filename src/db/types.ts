@@ -16,6 +16,7 @@ export type DebtKind =
   | 'auto_loan'
   | 'medical'
   | 'other';
+export type BillRecurrence = 'monthly' | 'weekly' | 'yearly';
 
 export interface Settings {
   id: number;
@@ -134,6 +135,29 @@ export interface DebtPayment {
   paid_at: string;
 }
 
+export interface Bill {
+  id: number;
+  profile_id: number;
+  name: string;
+  amount: number;
+  category_id: number | null;
+  account_id: number | null;
+  due_day: number;
+  recurrence: BillRecurrence;
+  reminder_days_before: number;
+  archived: number; // 0 | 1
+  created_at: string;
+}
+
+export interface BillPayment {
+  id: number;
+  bill_id: number;
+  period_key: string;
+  amount_paid: number;
+  transaction_id: number | null;
+  paid_at: string;
+}
+
 // Derived / joined shapes used by the UI layer
 
 export interface CategoryWithProgress extends Category {
@@ -145,6 +169,12 @@ export interface CategoryWithProgress extends Category {
 
 export interface SubcategoryWithPending extends Subcategory {
   pending: number;
+}
+
+export interface BillWithStatus extends Bill {
+  nextDueDate: string; // ISO date
+  currentPeriodKey: string; // 'yyyy-MM' the next due date falls in
+  paidForCurrentPeriod: boolean;
 }
 
 export interface PeriodSummary {

@@ -118,6 +118,29 @@ CREATE TABLE IF NOT EXISTS debt_payments (
   paid_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS bills (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  profile_id INTEGER NOT NULL REFERENCES budget_profiles(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  amount REAL NOT NULL DEFAULT 0,
+  category_id INTEGER REFERENCES categories(id),
+  account_id INTEGER REFERENCES accounts(id),
+  due_day INTEGER NOT NULL DEFAULT 1,
+  recurrence TEXT NOT NULL DEFAULT 'monthly',
+  reminder_days_before INTEGER NOT NULL DEFAULT 3,
+  archived INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS bill_payments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  bill_id INTEGER NOT NULL REFERENCES bills(id) ON DELETE CASCADE,
+  period_key TEXT NOT NULL,
+  amount_paid REAL NOT NULL,
+  transaction_id INTEGER REFERENCES transactions(id),
+  paid_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_allocations_period ON allocations(period_id);
 CREATE INDEX IF NOT EXISTS idx_subcategories_period ON subcategories(period_id, category_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_period ON transactions(period_id, category_id);
@@ -127,6 +150,8 @@ CREATE INDEX IF NOT EXISTS idx_accounts_profile ON accounts(profile_id);
 CREATE INDEX IF NOT EXISTS idx_account_balance_snapshots_account ON account_balance_snapshots(account_id);
 CREATE INDEX IF NOT EXISTS idx_debts_profile ON debts(profile_id);
 CREATE INDEX IF NOT EXISTS idx_debt_payments_debt ON debt_payments(debt_id);
+CREATE INDEX IF NOT EXISTS idx_bills_profile ON bills(profile_id);
+CREATE INDEX IF NOT EXISTS idx_bill_payments_bill ON bill_payments(bill_id);
 `;
 
 import { CATEGORY_PALETTE } from '../theme/colors';

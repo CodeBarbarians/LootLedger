@@ -9,6 +9,11 @@ import { Text } from '../components/app/Text';
 import { useToast } from '../components/app/Toast';
 import { useAccounts } from '../hooks/useAccounts';
 import {
+  cancelBillReminder,
+  scheduleBillReminder,
+  useBillNotificationPermission,
+} from '../hooks/useBillNotifications';
+import {
   getBillPeriodKey,
   useArchiveBill,
   useBillPayments,
@@ -48,6 +53,7 @@ export function BillsScreen({ navigation }: Props) {
   const unarchiveBill = useUnarchiveBill(profileId);
   const markBillPaid = useMarkBillPaid(profileId);
   const { show } = useToast();
+  useBillNotificationPermission();
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [name, setName] = useState('');
@@ -79,6 +85,7 @@ export function BillsScreen({ navigation }: Props) {
   async function saveName() {
     if (!selected || !name.trim() || name.trim() === selected.name) return;
     await updateBill.mutateAsync({ id: selected.id, patch: { name: name.trim() } });
+    await scheduleBillReminder({ ...selected, name: name.trim() }, symbol);
     show('Bill renamed');
   }
 
@@ -89,6 +96,7 @@ export function BillsScreen({ navigation }: Props) {
     setAmount(String(next));
     if (next === selected.amount) return;
     await updateBill.mutateAsync({ id: selected.id, patch: { amount: next } });
+    await scheduleBillReminder({ ...selected, amount: next }, symbol);
   }
 
   async function saveDueDay() {
@@ -98,6 +106,7 @@ export function BillsScreen({ navigation }: Props) {
     setDueDay(String(next));
     if (next === selected.due_day) return;
     await updateBill.mutateAsync({ id: selected.id, patch: { due_day: next } });
+    await scheduleBillReminder({ ...selected, due_day: next }, symbol);
   }
 
   async function saveReminderDaysBefore() {
@@ -107,6 +116,7 @@ export function BillsScreen({ navigation }: Props) {
     setReminderDaysBefore(String(next));
     if (next === selected.reminder_days_before) return;
     await updateBill.mutateAsync({ id: selected.id, patch: { reminder_days_before: next } });
+    await scheduleBillReminder({ ...selected, reminder_days_before: next }, symbol);
   }
 
   async function setCategory(categoryId: number | null) {
@@ -122,30 +132,46 @@ export function BillsScreen({ navigation }: Props) {
   async function setRecurrence(recurrence: BillRecurrence) {
     if (!selected) return;
     await updateBill.mutateAsync({ id: selected.id, patch: { recurrence } });
+    await scheduleBillReminder({ ...selected, recurrence }, symbol);
   }
 
   async function toggleArchived() {
     if (!selected) return;
     if (selected.archived) {
       await unarchiveBill.mutateAsync(selected.id);
+      await scheduleBillReminder({ ...selected, archived: 0 }, symbol);
       show('Bill restored');
     } else {
       await archiveBill.mutateAsync(selected.id);
+      await cancelBillReminder(selected.id);
       show('Bill archived');
     }
   }
 
   async function submitNewBill() {
     if (!newName.trim()) return;
-    const id = await createBill.mutateAsync({
+    const newBill = {
       name: newName.trim(),
       amount: 0,
       categoryId: null,
       accountId: null,
       dueDay: 1,
-      recurrence: 'monthly',
+      recurrence: 'monthly' as BillRecurrence,
       reminderDaysBefore: 3,
-    });
+    };
+    const id = await createBill.mutateAsync(newBill);
+    await scheduleBillReminder(
+      {
+        id,
+        name: newBill.name,
+        amount: newBill.amount,
+        due_day: newBill.dueDay,
+        recurrence: newBill.recurrence,
+        reminder_days_before: newBill.reminderDaysBefore,
+        archived: 0,
+      },
+      symbol
+    );
     setNewName('');
     setCreating(false);
     setSelectedId(id);

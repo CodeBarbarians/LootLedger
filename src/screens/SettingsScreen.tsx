@@ -1,7 +1,8 @@
 import * as LocalAuthentication from 'expo-local-authentication';
-import { useRef, type Ref } from 'react';
+import { useRef, useState, type Ref } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 import { CTAButton } from '../components/app/CTAButton';
+import { ConfirmDialog } from '../components/app/ConfirmDialog';
 import { Screen } from '../components/app/Screen';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
@@ -104,22 +105,12 @@ export function SettingsScreen({ navigation }: Props) {
     updateSettings.mutate({ biometric_lock_enabled: enabling ? 1 : 0 });
   }
 
-  function confirmReset() {
-    Alert.alert(
-      'Reset to Default Budget',
-      'This deletes every category, month, and transaction and reseeds the default budget. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            await resetToDefault.mutateAsync();
-            show('Default budget restored');
-          },
-        },
-      ]
-    );
+  const [resetOpen, setResetOpen] = useState(false);
+
+  async function performReset() {
+    setResetOpen(false);
+    await resetToDefault.mutateAsync();
+    show('Default budget restored');
   }
 
   return (
@@ -203,7 +194,15 @@ export function SettingsScreen({ navigation }: Props) {
         />
       </View>
 
-      <CTAButton label="RESET TO DEFAULT BUDGET" variant="danger" className="mt-4" onPress={confirmReset} />
+      <CTAButton label="RESET TO DEFAULT BUDGET" variant="danger" className="mt-4" onPress={() => setResetOpen(true)} />
+      <ConfirmDialog
+        visible={resetOpen}
+        title="Reset to default budget"
+        message="This deletes every category, month and transaction, then reseeds the default budget. This cannot be undone."
+        confirmLabel="RESET"
+        onConfirm={performReset}
+        onCancel={() => setResetOpen(false)}
+      />
 
       <View className="flex-row items-center gap-2.5 mt-8 pt-5 border-t border-divider">
         <Text variant="mono" className="text-[10px] text-faint leading-4">

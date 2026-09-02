@@ -48,7 +48,8 @@ export interface Category {
   color: string;
   kind: CategoryKind;
   sort_order: number;
-  is_default: number; // 0 | 1
+  is_default: number; // 0 | 1 — seeded with the profile
+  is_system: number; // 0 | 1 — the Uncategorized fallback; cannot be deleted
   archived: number; // 0 | 1
 }
 

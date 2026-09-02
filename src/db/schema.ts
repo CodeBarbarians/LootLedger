@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS categories (
   kind TEXT NOT NULL DEFAULT 'expense',
   sort_order INTEGER NOT NULL DEFAULT 0,
   is_default INTEGER NOT NULL DEFAULT 0,
+  is_system INTEGER NOT NULL DEFAULT 0,
   archived INTEGER NOT NULL DEFAULT 0
 );
 

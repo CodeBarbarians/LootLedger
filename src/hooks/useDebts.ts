@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSQLiteContext } from 'expo-sqlite';
 import {
   archiveDebt,
+  deleteDebt,
   createDebt,
   listDebtPayments,
   listDebts,
@@ -105,6 +106,17 @@ export function useRecordPayment(profileId: number) {
     onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['debts', profileId] });
       queryClient.invalidateQueries({ queryKey: ['debtPayments', variables.debtId] });
+    },
+  });
+}
+
+export function useDeleteDebt(profileId: number) {
+  const db = useSQLiteContext();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteDebt(db, profileId, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['debts', profileId] });
     },
   });
 }

@@ -200,3 +200,16 @@ export async function listBillsDueSoon(
     .sort((a, b) => a.nextDueDate.localeCompare(b.nextDueDate))
     .slice(0, limit);
 }
+
+
+/**
+ * Permanently removes the bill and its payment records, which are owned by it
+ * alone and cascade at the foreign key.
+ */
+export async function deleteBill(
+  db: SQLiteDatabase,
+  profileId: number,
+  id: number
+): Promise<void> {
+  await db.runAsync('DELETE FROM bills WHERE id = ? AND profile_id = ?', [id, profileId]);
+}

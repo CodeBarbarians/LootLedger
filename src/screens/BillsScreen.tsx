@@ -1,8 +1,9 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { AddItemSheet } from '../components/app/AddItemSheet';
 import { CTAButton } from '../components/app/CTAButton';
+import { ConfirmDialog } from '../components/app/ConfirmDialog';
 import { Pill } from '../components/app/Pill';
 import { Screen } from '../components/app/Screen';
 import { SectionLabel } from '../components/app/SectionLabel';
@@ -23,6 +24,7 @@ import {
   useMarkBillPaid,
   useUnarchiveBill,
   useUpdateBill,
+  useDeleteBill,
 } from '../hooks/useBills';
 import { useCategories } from '../hooks/useCategories';
 import { useCurrentPeriod } from '../hooks/usePeriods';
@@ -134,6 +136,18 @@ export function BillsScreen({ navigation }: Props) {
     if (!selected) return;
     await updateBill.mutateAsync({ id: selected.id, patch: { recurrence } });
     await scheduleBillReminder({ ...selected, recurrence }, symbol);
+  }
+
+  const deleteEntity = useDeleteBill(profileId);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  async function performDelete() {
+    if (!selected) return;
+    setDeleteOpen(false);
+    await deleteEntity.mutateAsync(selected.id);
+    setSelectedId(null);
+    show('Bill deleted');
   }
 
   async function toggleArchived() {
@@ -493,6 +507,15 @@ export function BillsScreen({ navigation }: Props) {
                 className="mt-3"
                 onPress={toggleArchived}
               />
+              <CTAButton label="DELETE BILL" variant="danger" className="mt-3" onPress={() => setDeleteOpen(true)} />
+<ConfirmDialog
+  visible={deleteOpen}
+  title="Delete bill"
+  message={`Permanently delete "${selected.name}" and its payment records? This cannot be undone.`}
+  confirmLabel="DELETE"
+  onConfirm={performDelete}
+  onCancel={() => setDeleteOpen(false)}
+/>
               <Text variant="mono" className="text-[10px] text-faint mt-3 leading-4">
                 {selected.archived
                   ? 'Restoring brings it back into the due-soon list. Its payment history is unaffected either way.'

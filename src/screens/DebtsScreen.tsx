@@ -1,8 +1,9 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { AddItemSheet } from '../components/app/AddItemSheet';
 import { CTAButton } from '../components/app/CTAButton';
+import { ConfirmDialog } from '../components/app/ConfirmDialog';
 import { DebtPaymentSheet } from '../components/app/DebtPaymentSheet';
 import { Pill } from '../components/app/Pill';
 import { Screen } from '../components/app/Screen';
@@ -18,6 +19,7 @@ import {
   useRecordPayment,
   useUnarchiveDebt,
   useUpdateDebt,
+  useDeleteDebt,
 } from '../hooks/useDebts';
 import { useActiveProfile } from '../hooks/useProfiles';
 import type { RootStackParamList } from '../navigation/types';
@@ -150,6 +152,18 @@ export function DebtsScreen({ navigation }: Props) {
   async function setLinkedAccount(accountId: number | null) {
     if (!selected) return;
     await updateDebt.mutateAsync({ id: selected.id, patch: { account_id: accountId } });
+  }
+
+  const deleteEntity = useDeleteDebt(profileId);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  async function performDelete() {
+    if (!selected) return;
+    setDeleteOpen(false);
+    await deleteEntity.mutateAsync(selected.id);
+    setSelectedId(null);
+    show('Debt deleted');
   }
 
   async function toggleArchived() {
@@ -507,6 +521,15 @@ export function DebtsScreen({ navigation }: Props) {
                 className="mt-3"
                 onPress={toggleArchived}
               />
+              <CTAButton label="DELETE DEBT" variant="danger" className="mt-3" onPress={() => setDeleteOpen(true)} />
+<ConfirmDialog
+  visible={deleteOpen}
+  title="Delete debt"
+  message={`Permanently delete "${selected.name}" and its payment history? This cannot be undone.`}
+  confirmLabel="DELETE"
+  onConfirm={performDelete}
+  onCancel={() => setDeleteOpen(false)}
+/>
               <Text variant="mono" className="text-[10px] text-faint mt-3 leading-4">
                 {selected.archived
                   ? 'Restoring brings it back into the payoff plan. Its payment history is unaffected either way.'

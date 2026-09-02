@@ -1,9 +1,10 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { AddItemSheet } from '../components/app/AddItemSheet';
 import { Bar } from '../components/app/Bar';
 import { CTAButton } from '../components/app/CTAButton';
+import { ConfirmDialog } from '../components/app/ConfirmDialog';
 import { Pill } from '../components/app/Pill';
 import { Ring } from '../components/app/Ring';
 import { Screen } from '../components/app/Screen';
@@ -21,6 +22,7 @@ import {
   useUnarchiveAccount,
   useUpdateAccount,
   useUpdateAccountBalance,
+  useDeleteAccount,
 } from '../hooks/useAccounts';
 import { useActiveProfile } from '../hooks/useProfiles';
 import type { RootStackParamList } from '../navigation/types';
@@ -108,6 +110,18 @@ export function AccountsScreen({ navigation }: Props) {
   async function setLiability(isLiability: boolean) {
     if (!selected) return;
     await updateAccount.mutateAsync({ id: selected.id, patch: { is_liability: isLiability ? 1 : 0 } });
+  }
+
+  const deleteEntity = useDeleteAccount(profileId);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  async function performDelete() {
+    if (!selected) return;
+    setDeleteOpen(false);
+    await deleteEntity.mutateAsync(selected.id);
+    setSelectedId(null);
+    show('Account deleted');
   }
 
   async function toggleArchived() {
@@ -425,6 +439,15 @@ export function AccountsScreen({ navigation }: Props) {
                 className="mt-6"
                 onPress={toggleArchived}
               />
+              <CTAButton label="DELETE ACCOUNT" variant="danger" className="mt-3" onPress={() => setDeleteOpen(true)} />
+<ConfirmDialog
+  visible={deleteOpen}
+  title="Delete account"
+  message={`Permanently delete "${selected.name}" and its balance history? This cannot be undone.`}
+  confirmLabel="DELETE"
+  onConfirm={performDelete}
+  onCancel={() => setDeleteOpen(false)}
+/>
               <Text variant="mono" className="text-[10px] text-faint mt-3 leading-4">
                 {selected.archived
                   ? 'Restoring brings it back into your net worth. Its balance history is unaffected either way.'

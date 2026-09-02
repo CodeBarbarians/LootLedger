@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSQLiteContext } from 'expo-sqlite';
 import {
   archiveCategory,
+  deleteCategory,
   createCategory,
   listCategories,
   unarchiveCategory,
@@ -53,5 +54,21 @@ export function useUnarchiveCategory(profileId: number) {
   return useMutation({
     mutationFn: (id: number) => unarchiveCategory(db, profileId, id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories', profileId] }),
+  });
+}
+
+/**
+ * Removes a category and moves its allocations, subcategories, transactions and
+ * bills to the profile's Uncategorized category, so history survives the delete.
+ */
+export function useDeleteCategory(profileId: number) {
+  const db = useSQLiteContext();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteCategory(db, id),
+    onSuccess: () => {
+      // The reassignment touches budgets, spend and bills, so refresh broadly.
+      queryClient.invalidateQueries();
+    },
   });
 }

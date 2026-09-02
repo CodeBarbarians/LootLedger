@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSQLiteContext } from 'expo-sqlite';
 import {
   archiveBill,
+  deleteBill,
   createBill,
   getBillPeriodKey,
   listBillPayments,
@@ -132,6 +133,17 @@ export function useMarkBillPaid(profileId: number) {
       queryClient.invalidateQueries({ queryKey: ['billPayments', variables.billId] });
       queryClient.invalidateQueries({ queryKey: ['categoriesProgress'] });
       queryClient.invalidateQueries({ queryKey: ['periodSummary'] });
+    },
+  });
+}
+
+export function useDeleteBill(profileId: number) {
+  const db = useSQLiteContext();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteBill(db, profileId, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bills', profileId] });
     },
   });
 }

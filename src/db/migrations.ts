@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { CREATE_TABLES_SQL } from './schema';
 
-const DB_VERSION = 9;
+const DB_VERSION = 10;
 
 // TEMP DIAGNOSTIC INSTRUMENTATION — remove once the blank-screen-on-launch bug is found.
 const diag = (msg: string) => console.log(`[migrateDb ${Date.now()}] ${msg}`);
@@ -389,6 +389,24 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     await db.execAsync('ALTER TABLE settings ADD COLUMN biometric_lock_enabled INTEGER NOT NULL DEFAULT 0');
     diag('v8->v9 done');
     currentVersion = 9;
+  }
+
+  if (currentVersion === 9) {
+    diag('starting v9->v10 (uncategorized fallback category)');
+    await db.execAsync('ALTER TABLE categories ADD COLUMN is_system INTEGER NOT NULL DEFAULT 0');
+    // Deleting a category reassigns its allocations, subcategories, transactions and
+    // bills here instead of destroying them, so every profile needs one and it can
+    // never itself be deleted.
+    const profiles = await db.getAllAsync<{ id: number }>('SELECT id FROM budget_profiles');
+    for (const profile of profiles) {
+      await db.runAsync(
+        `INSERT INTO categories (profile_id, name, color, kind, sort_order, is_default, is_system, archived)
+         VALUES (?, 'Uncategorized', '#8A7A66', 'expense', 999, 0, 1, 0)`,
+        [profile.id]
+      );
+    }
+    diag(`v9->v10 done for ${profiles.length} profiles`);
+    currentVersion = 10;
   }
 
   diag('final PRAGMA user_version bump, migration complete');

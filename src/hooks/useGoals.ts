@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import {
   addContribution,
   archiveGoal,
+  deleteGoal,
   createGoal,
   listGoalContributions,
   listGoals,
@@ -113,6 +114,17 @@ export function useAddContribution(profileId: number) {
       queryClient.invalidateQueries({ queryKey: ['goals', profileId] });
       queryClient.invalidateQueries({ queryKey: ['goalsWithProgress', profileId] });
       queryClient.invalidateQueries({ queryKey: ['goalContributions', variables.goalId] });
+    },
+  });
+}
+
+export function useDeleteGoal(profileId: number) {
+  const db = useSQLiteContext();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteGoal(db, profileId, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['goals', profileId] });
     },
   });
 }

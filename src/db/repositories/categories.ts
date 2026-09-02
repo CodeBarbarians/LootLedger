@@ -34,8 +34,11 @@ export async function seedDefaultCategoriesIfEmpty(
   db: SQLiteDatabase,
   profileId: number
 ): Promise<void> {
+  // Every profile gets the fallback, including ones that already have categories.
+  await ensureUncategorized(db, profileId);
+
   const existing = await db.getFirstAsync<{ count: number }>(
-    'SELECT COUNT(*) as count FROM categories WHERE profile_id = ?',
+    'SELECT COUNT(*) as count FROM categories WHERE profile_id = ? AND is_system = 0',
     [profileId]
   );
   if (existing && existing.count > 0) return;
@@ -105,4 +108,97 @@ export async function unarchiveCategory(
     id,
     profileId,
   ]);
+}
+
+/**
+ * The per-profile fallback category. Deleting a category moves its history here
+ * rather than destroying it, so it must always exist and can never be deleted.
+ */
+export async function ensureUncategorized(
+  db: SQLiteDatabase,
+  profileId: number
+): Promise<number> {
+  const existing = await db.getFirstAsync<{ id: number }>(
+    'SELECT id FROM categories WHERE profile_id = ? AND is_system = 1',
+    [profileId]
+  );
+  if (existing) return existing.id;
+
+  const result = await db.runAsync(
+    `INSERT INTO categories (profile_id, name, color, kind, sort_order, is_default, is_system, archived)
+     VALUES (?, 'Uncategorized', '#8A7A66', 'expense', 999, 0, 1, 0)`,
+    [profileId]
+  );
+  return result.lastInsertRowId;
+}
+
+/**
+ * Deletes a category, reassigning everything that referenced it to the profile's
+ * Uncategorized category. Nothing is destroyed: past months keep their spend, the
+ * money just shows as uncategorized.
+ */
+export async function deleteCategory(db: SQLiteDatabase, categoryId: number): Promise<void> {
+  const category = await db.getFirstAsync<{ profile_id: number; is_system: number }>(
+    'SELECT profile_id, is_system FROM categories WHERE id = ?',
+    [categoryId]
+  );
+  if (!category) return;
+  if (category.is_system) {
+    throw new Error('Uncategorized cannot be deleted — it is where deleted categories move their history.');
+  }
+
+  const fallbackId = await ensureUncategorized(db, category.profile_id);
+
+  await db.withTransactionAsync(async () => {
+    // allocations is UNIQUE(period_id, category_id), so a period that already has
+    // an Uncategorized allocation has to absorb this one rather than gain a second.
+    const allocations = await db.getAllAsync<{
+      id: number;
+      period_id: number;
+      percent: number | null;
+      amount_allocated: number;
+    }>('SELECT id, period_id, percent, amount_allocated FROM allocations WHERE category_id = ?', [
+      categoryId,
+    ]);
+
+    for (const allocation of allocations) {
+      const existing = await db.getFirstAsync<{ id: number; percent: number | null; amount_allocated: number }>(
+        'SELECT id, percent, amount_allocated FROM allocations WHERE period_id = ? AND category_id = ?',
+        [allocation.period_id, fallbackId]
+      );
+      if (existing) {
+        await db.runAsync(
+          'UPDATE allocations SET percent = ?, amount_allocated = ? WHERE id = ?',
+          [
+            existing.percent === null && allocation.percent === null
+              ? null
+              : (existing.percent ?? 0) + (allocation.percent ?? 0),
+            existing.amount_allocated + allocation.amount_allocated,
+            existing.id,
+          ]
+        );
+        await db.runAsync('DELETE FROM allocations WHERE id = ?', [allocation.id]);
+      } else {
+        await db.runAsync('UPDATE allocations SET category_id = ? WHERE id = ?', [
+          fallbackId,
+          allocation.id,
+        ]);
+      }
+    }
+
+    await db.runAsync('UPDATE subcategories SET category_id = ? WHERE category_id = ?', [
+      fallbackId,
+      categoryId,
+    ]);
+    await db.runAsync('UPDATE transactions SET category_id = ? WHERE category_id = ?', [
+      fallbackId,
+      categoryId,
+    ]);
+    await db.runAsync('UPDATE bills SET category_id = ? WHERE category_id = ?', [
+      fallbackId,
+      categoryId,
+    ]);
+
+    await db.runAsync('DELETE FROM categories WHERE id = ?', [categoryId]);
+  });
 }

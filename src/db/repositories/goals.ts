@@ -120,3 +120,16 @@ export async function addContribution(
     [goalId, data.amount, data.note, now]
   );
 }
+
+
+/**
+ * Permanently removes the goal and its contributions, which are owned by it
+ * alone and cascade at the foreign key.
+ */
+export async function deleteGoal(
+  db: SQLiteDatabase,
+  profileId: number,
+  id: number
+): Promise<void> {
+  await db.runAsync('DELETE FROM goals WHERE id = ? AND profile_id = ?', [id, profileId]);
+}

@@ -1,9 +1,10 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { AddItemSheet } from '../components/app/AddItemSheet';
 import { Bar } from '../components/app/Bar';
 import { CTAButton } from '../components/app/CTAButton';
+import { ConfirmDialog } from '../components/app/ConfirmDialog';
 import { GoalContributionSheet } from '../components/app/GoalContributionSheet';
 import { Screen } from '../components/app/Screen';
 import { SectionLabel } from '../components/app/SectionLabel';
@@ -18,6 +19,7 @@ import {
   useGoalsWithProgress,
   useUnarchiveGoal,
   useUpdateGoal,
+  useDeleteGoal,
 } from '../hooks/useGoals';
 import { useActiveProfile } from '../hooks/useProfiles';
 import type { RootStackParamList } from '../navigation/types';
@@ -87,6 +89,18 @@ export function GoalsScreen({ navigation }: Props) {
   async function setColor(color: string) {
     if (!selected) return;
     await updateGoal.mutateAsync({ id: selected.id, patch: { color } });
+  }
+
+  const deleteEntity = useDeleteGoal(profileId);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  async function performDelete() {
+    if (!selected) return;
+    setDeleteOpen(false);
+    await deleteEntity.mutateAsync(selected.id);
+    setSelectedId(null);
+    show('Goal deleted');
   }
 
   async function toggleArchived() {
@@ -396,6 +410,15 @@ export function GoalsScreen({ navigation }: Props) {
                 className="mt-6"
                 onPress={toggleArchived}
               />
+              <CTAButton label="DELETE GOAL" variant="danger" className="mt-3" onPress={() => setDeleteOpen(true)} />
+<ConfirmDialog
+  visible={deleteOpen}
+  title="Delete goal"
+  message={`Permanently delete "${selected.name}" and its contributions? This cannot be undone.`}
+  confirmLabel="DELETE"
+  onConfirm={performDelete}
+  onCancel={() => setDeleteOpen(false)}
+/>
               <Text variant="mono" className="text-[10px] text-faint mt-3 leading-4">
                 {selected.archived
                   ? 'Restoring brings it back into your active goals. Its contribution history is unaffected either way.'

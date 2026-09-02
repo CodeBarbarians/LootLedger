@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSQLiteContext } from 'expo-sqlite';
 import {
   archiveAccount,
+  deleteAccount,
   createAccount,
   getNetWorth,
   getNetWorthTrend,
@@ -109,5 +110,18 @@ export function useNetWorthTrend(profileId: number | undefined, months = 6) {
     queryKey: ['netWorthTrend', profileId, months],
     queryFn: () => getNetWorthTrend(db, profileId as number, months),
     enabled: profileId != null,
+  });
+}
+
+export function useDeleteAccount(profileId: number) {
+  const db = useSQLiteContext();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteAccount(db, profileId, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts', profileId] });
+      queryClient.invalidateQueries({ queryKey: ['netWorth', profileId] });
+      queryClient.invalidateQueries({ queryKey: ['netWorthTrend', profileId] });
+    },
   });
 }

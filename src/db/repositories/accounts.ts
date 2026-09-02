@@ -184,3 +184,16 @@ export async function getNetWorthTrend(
 
   return points;
 }
+
+
+/**
+ * Permanently removes the account and its balance snapshots, which are owned by it
+ * alone and cascade at the foreign key.
+ */
+export async function deleteAccount(
+  db: SQLiteDatabase,
+  profileId: number,
+  id: number
+): Promise<void> {
+  await db.runAsync('DELETE FROM accounts WHERE id = ? AND profile_id = ?', [id, profileId]);
+}

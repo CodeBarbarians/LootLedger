@@ -133,3 +133,16 @@ export async function recordPayment(
     );
   });
 }
+
+
+/**
+ * Permanently removes the debt and its payments, which are owned by it
+ * alone and cascade at the foreign key.
+ */
+export async function deleteDebt(
+  db: SQLiteDatabase,
+  profileId: number,
+  id: number
+): Promise<void> {
+  await db.runAsync('DELETE FROM debts WHERE id = ? AND profile_id = ?', [id, profileId]);
+}

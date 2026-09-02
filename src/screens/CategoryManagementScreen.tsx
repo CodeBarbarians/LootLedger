@@ -1,8 +1,9 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { AddItemSheet } from '../components/app/AddItemSheet';
 import { CTAButton } from '../components/app/CTAButton';
+import { ConfirmDialog } from '../components/app/ConfirmDialog';
 import { Pill } from '../components/app/Pill';
 import { Screen } from '../components/app/Screen';
 import { SectionLabel } from '../components/app/SectionLabel';
@@ -15,6 +16,7 @@ import {
   useCreateCategory,
   useUnarchiveCategory,
   useUpdateCategory,
+  useDeleteCategory,
 } from '../hooks/useCategories';
 import { useActiveProfile } from '../hooks/useProfiles';
 import type { RootStackParamList } from '../navigation/types';
@@ -75,6 +77,18 @@ export function CategoryManagementScreen({ navigation }: Props) {
   async function setKind(kind: CategoryKind) {
     if (!selected) return;
     await updateCategory.mutateAsync({ id: selected.id, patch: { kind } });
+  }
+
+  const deleteEntity = useDeleteCategory(profileId);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  async function performDelete() {
+    if (!selected || selected.is_system) return;
+    setDeleteOpen(false);
+    await deleteEntity.mutateAsync(selected.id);
+    setSelectedId(null);
+    show('Category deleted — its history moved to Uncategorized');
   }
 
   async function toggleArchived() {
@@ -256,12 +270,37 @@ export function CategoryManagementScreen({ navigation }: Props) {
                 </View>
               </View>
 
-              <CTAButton
-                label={selected.archived ? 'RESTORE CATEGORY' : 'ARCHIVE CATEGORY'}
-                variant={selected.archived ? 'solid' : 'danger'}
-                className="mt-6"
-                onPress={toggleArchived}
-              />
+              {selected.is_system ? (
+                <Text variant="mono" className="text-[10px] text-faint mt-6 leading-4">
+                  Uncategorized is where deleted categories move their history, so it cannot be
+                  archived or deleted.
+                </Text>
+              ) : (
+                <CTAButton
+                  label={selected.archived ? 'RESTORE CATEGORY' : 'ARCHIVE CATEGORY'}
+                  variant={selected.archived ? 'solid' : 'danger'}
+                  className="mt-6"
+                  onPress={toggleArchived}
+                />
+              )}
+              {selected.is_system ? null : (
+                <>
+                  <CTAButton
+                    label="DELETE CATEGORY"
+                    variant="danger"
+                    className="mt-3"
+                    onPress={() => setDeleteOpen(true)}
+                  />
+                  <ConfirmDialog
+                    visible={deleteOpen}
+                    title="Delete category"
+                    message={`Delete "${selected.name}"? Its budgets, subcategories, spending and bills move to Uncategorized — nothing is lost.`}
+                    confirmLabel="DELETE"
+                    onConfirm={performDelete}
+                    onCancel={() => setDeleteOpen(false)}
+                  />
+                </>
+              )}
               <Text variant="mono" className="text-[10px] text-faint mt-3 leading-4">
                 {selected.archived
                   ? 'Restoring brings it back for new months. Past history is unaffected either way.'

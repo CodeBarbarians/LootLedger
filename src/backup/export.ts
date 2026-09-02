@@ -4,24 +4,58 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { BACKUP_SCHEMA_VERSION, type BackupPayload } from './format';
 
 export async function buildBackupPayload(db: SQLiteDatabase): Promise<BackupPayload> {
-  const [settings, categories, budget_periods, allocations, subcategories, transactions] = await Promise.all([
+  const [
+    budget_profiles,
+    settings,
+    categories,
+    budget_periods,
+    accounts,
+    debts,
+    bills,
+    goals,
+    allocations,
+    subcategories,
+    transactions,
+    account_balance_snapshots,
+    debt_payments,
+    bill_payments,
+    goal_contributions,
+  ] = await Promise.all([
+    db.getAllAsync<Record<string, unknown>>('SELECT * FROM budget_profiles'),
     db.getAllAsync<Record<string, unknown>>('SELECT * FROM settings'),
     db.getAllAsync<Record<string, unknown>>('SELECT * FROM categories'),
     db.getAllAsync<Record<string, unknown>>('SELECT * FROM budget_periods'),
+    db.getAllAsync<Record<string, unknown>>('SELECT * FROM accounts'),
+    db.getAllAsync<Record<string, unknown>>('SELECT * FROM debts'),
+    db.getAllAsync<Record<string, unknown>>('SELECT * FROM bills'),
+    db.getAllAsync<Record<string, unknown>>('SELECT * FROM goals'),
     db.getAllAsync<Record<string, unknown>>('SELECT * FROM allocations'),
     db.getAllAsync<Record<string, unknown>>('SELECT * FROM subcategories'),
     db.getAllAsync<Record<string, unknown>>('SELECT * FROM transactions'),
+    db.getAllAsync<Record<string, unknown>>('SELECT * FROM account_balance_snapshots'),
+    db.getAllAsync<Record<string, unknown>>('SELECT * FROM debt_payments'),
+    db.getAllAsync<Record<string, unknown>>('SELECT * FROM bill_payments'),
+    db.getAllAsync<Record<string, unknown>>('SELECT * FROM goal_contributions'),
   ]);
 
   return {
     schemaVersion: BACKUP_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
+    budget_profiles,
     settings,
     categories,
     budget_periods,
+    accounts,
+    debts,
+    bills,
+    goals,
     allocations,
     subcategories,
     transactions,
+    account_balance_snapshots,
+    debt_payments,
+    bill_payments,
+    goal_contributions,
   };
 }
 

@@ -18,12 +18,21 @@ export async function pickBackupFile(): Promise<BackupPayload | null> {
 }
 
 const TABLE_ORDER: (keyof BackupPayload)[] = [
+  'budget_profiles',
   'settings',
   'categories',
   'budget_periods',
+  'accounts',
+  'debts',
+  'bills',
+  'goals',
   'allocations',
   'subcategories',
   'transactions',
+  'account_balance_snapshots',
+  'debt_payments',
+  'bill_payments',
+  'goal_contributions',
 ];
 
 async function insertRows(db: SQLiteDatabase, table: string, rows: Record<string, unknown>[]) {
@@ -43,7 +52,7 @@ export async function restoreBackup(db: SQLiteDatabase, payload: BackupPayload):
       await db.runAsync(`DELETE FROM ${table}`);
     }
     for (const table of TABLE_ORDER) {
-      await insertRows(db, table, payload[table] as Record<string, unknown>[]);
+      await insertRows(db, table, (payload[table] as Record<string, unknown>[] | undefined) ?? []);
     }
   });
 }

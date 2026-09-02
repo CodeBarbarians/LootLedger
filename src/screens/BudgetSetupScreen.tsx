@@ -40,6 +40,7 @@ interface Row {
 }
 
 export function BudgetSetupScreen({ route, navigation }: Props) {
+  console.log(`[BudgetSetupScreen] render, params=${JSON.stringify(route.params)}`);
   const { mode, periodId } = route.params;
   const isOnboarding = mode === 'onboarding';
   const isCreatingProfile = mode === 'onboarding' || mode === 'newProfile';

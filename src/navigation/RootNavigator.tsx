@@ -19,6 +19,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
   const { isLoading, needsOnboarding } = useActiveProfile();
+  console.log(`[RootNavigator] render isLoading=${isLoading} needsOnboarding=${needsOnboarding}`);
 
   // `initialRouteName` is only read once, on first mount — it must not be computed
   // from the active profile before that query has actually resolved, or the navigator

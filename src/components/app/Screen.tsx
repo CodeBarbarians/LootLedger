@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Dimensions,
+  StyleSheet,
   Keyboard,
   Platform,
   ScrollView,
@@ -17,12 +18,14 @@ interface ScreenProps extends ViewProps {
   scroll?: boolean;
   onBack?: () => void;
   topBarTitle?: string;
+  /** Floats above the screen's content without scrolling with it, and never takes touches. */
+  overlay?: ReactNode;
 }
 
 /** Gap left between the focused field and the top of the keyboard. */
 const FOCUS_MARGIN = 24;
 
-export function Screen({ scroll = true, onBack, topBarTitle, children, ...rest }: ScreenProps) {
+export function Screen({ scroll = true, onBack, topBarTitle, overlay, children, ...rest }: ScreenProps) {
   const scrollRef = useRef<ScrollView>(null);
   const containerRef = useRef<View>(null);
   const contentRef = useRef<View>(null);
@@ -116,6 +119,11 @@ export function Screen({ scroll = true, onBack, topBarTitle, children, ...rest }
             {content}
           </View>
         )}
+        {overlay ? (
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            {overlay}
+          </View>
+        ) : null}
       </View>
     </SafeAreaView>
   );

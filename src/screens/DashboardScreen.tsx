@@ -1,10 +1,12 @@
 import { format } from 'date-fns';
 import { useSharedValue } from 'react-native-reanimated';
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { AddExpenseSheet } from '../components/app/AddExpenseSheet';
 import { Bar } from '../components/app/Bar';
 import { BrandMark } from '../components/app/BrandMark';
+import { Mascot, TUG_MS } from '../components/app/Mascot';
+import { Wobble } from '../components/app/Wobble';
 import { ShatterText } from '../components/app/ShatterText';
 import { CTAButton } from '../components/app/CTAButton';
 import { DashedButton } from '../components/app/DashedButton';
@@ -45,6 +47,72 @@ export function DashboardScreen({ navigation }: Props) {
   // Driven by the brand mark when it is tapped: the heading beside it breaks
   // apart character by character and reassembles with the horns.
   const markNudge = useSharedValue(0);
+  // Play mode: the mark leaves its spot and roams, poking these as it lands.
+  const [playing, setPlaying] = useState(false);
+  const summaryNudge = useSharedValue(0);
+  const tilesNudge = useSharedValue(0);
+  // Purely presentational mischief: the mascot tugs a chart out of shape and the
+  // numbers beside it follow, but nothing is written — the next render off real
+  // data is unchanged.
+  const [mischief, setMischief] = useState(0);
+  const [mischiefKind, setMischiefKind] = useState<'ring' | 'bars' | null>(null);
+  const mischiefTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function playMischief(kind: 'ring' | 'bars') {
+    if (mischiefTimer.current) return;
+    setMischiefKind(kind);
+    const started = Date.now();
+    const total = TUG_MS;
+    const step = () => {
+      const t = (Date.now() - started) / total;
+      if (t >= 1) {
+        mischiefTimer.current = null;
+        setMischief(0);
+        setMischiefKind(null);
+        return;
+      }
+      // Same tug of war the mascot is pulling: heave, give ground, heave harder,
+      // then snap back when it lets go.
+      const value =
+        t < 0.18
+          ? (t / 0.18) * 0.8
+          : t < 0.32
+            ? 0.8 - ((t - 0.18) / 0.14) * 0.48
+            : t < 0.5
+              ? 0.32 + ((t - 0.32) / 0.18) * 0.68
+              : t < 0.6
+                ? 1
+                : 1 - (t - 0.6) / 0.4;
+      setMischief(value);
+      // Throttled well below frame rate: this re-renders the whole dashboard, and
+      // the shapes read fine at this cadence.
+      mischiefTimer.current = setTimeout(step, 45);
+    };
+    step();
+  }
+
+  useEffect(() => {
+    return () => {
+      if (mischiefTimer.current) clearTimeout(mischiefTimer.current);
+    };
+  }, []);
+
+  const ringMischief = mischiefKind === 'ring' ? mischief : 0;
+  const barMischief = mischiefKind === 'bars' ? mischief : 0;
+
+  const spots = useMemo(
+    () => [
+      { y: 0.06, nudge: markNudge, pull: { dx: 14, dy: 6 } },
+      { y: 0.3, nudge: summaryNudge, pull: { dx: 10, dy: -8 } },
+      { y: 0.55, nudge: tilesNudge, pull: { dx: 12, dy: 8 } },
+      // Hauls the donut down, and drags the category bars out to the right.
+      { y: 0.24, onArrive: () => playMischief('ring'), pull: { dx: -8, dy: 30 } },
+      { y: 0.74, onArrive: () => playMischief('bars'), pull: { dx: 38, dy: 0 } },
+    ],
+    // playMischief is stable enough for this — it only reads refs and setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [markNudge, summaryNudge, tilesNudge]
+  );
 
 
   function toggleTheme() {
@@ -92,7 +160,7 @@ export function DashboardScreen({ navigation }: Props) {
   const ringColor = over ? colors.danger : colors.accent;
 
   return (
-    <Screen>
+    <Screen overlay={<Mascot playing={playing} spots={spots} />}>
       <Pressable
         onPress={() => navigation.navigate('BudgetProfiles')}
         className="flex-row items-center gap-1.5 self-start mb-3 rounded-full border border-border-strong px-2.5 py-1.5 active:border-primary"
@@ -105,7 +173,9 @@ export function DashboardScreen({ navigation }: Props) {
 
       <View className="flex-row items-start justify-between gap-3 mb-5">
         <View className="flex-row items-center gap-2.5">
-          <BrandMark size={30} nudge={markNudge} />
+          <View style={{ opacity: playing ? 0 : 1 }}>
+            <BrandMark size={30} nudge={markNudge} />
+          </View>
           <View>
             <ShatterText
               text={formatPeriodLabel(period.cycle_start_date).toUpperCase()}
@@ -127,6 +197,16 @@ export function DashboardScreen({ navigation }: Props) {
         </View>
         <View className="flex-row items-center gap-2 mt-1.5">
           <Pressable
+            onPress={() => setPlaying((on) => !on)}
+            hitSlop={8}
+            className="rounded-full border border-border-strong px-3 py-2 active:border-primary"
+            style={playing ? { borderColor: colors.accent } : undefined}
+          >
+            <Text variant="mono" className="font-mono-bold text-[10px] tracking-wider text-primary">
+              {playing ? '✦' : '✧'}
+            </Text>
+          </Pressable>
+          <Pressable
             ref={themeButtonRef}
             onPress={toggleTheme}
             hitSlop={8}
@@ -147,12 +227,12 @@ export function DashboardScreen({ navigation }: Props) {
         </View>
       </View>
 
-      <View className="rounded-3xl border border-border bg-card px-5 pt-[22px] pb-[18px]">
+      <Wobble progress={summaryNudge} className="rounded-3xl border border-border bg-card px-5 pt-[22px] pb-[18px]">
         <View className="flex-row items-center gap-[18px]">
           <Ring
-            fraction={ringFraction}
+            fraction={ringFraction * (1 - 0.85 * ringMischief)}
             color={ringColor}
-            label={`${Math.round(Math.max(0, Math.min(1, ringFraction)) * 100)}%`}
+            label={`${Math.round(Math.max(0, Math.min(1, ringFraction * (1 - 0.85 * ringMischief))) * 100)}%`}
             sublabel="BUDGET LEFT"
           />
           <View className="flex-1 min-w-0">
@@ -171,7 +251,7 @@ export function DashboardScreen({ navigation }: Props) {
               numberOfLines={1}
               adjustsFontSizeToFit
             >
-              {formatAmount(summary?.totalRemaining ?? 0, symbol)}
+              {formatAmount((summary?.totalRemaining ?? 0) * (1 - 0.85 * ringMischief), symbol)}
             </Text>
             <Text variant="mono" className="mt-2 text-[10px] leading-4">
               {(summary?.overCount ?? 0) > 0
@@ -209,9 +289,9 @@ export function DashboardScreen({ navigation }: Props) {
             ACCOUNTS →
           </Text>
         </Pressable>
-      </View>
+      </Wobble>
 
-      <View className="flex-row gap-2.5 mt-3">
+      <Wobble progress={tilesNudge} className="flex-row gap-2.5 mt-3">
         <View className="flex-1 rounded-[18px] border border-border bg-card px-4 py-3.5">
           <Text variant="mono" className="text-[9px] tracking-widest text-faint">
             SPENT
@@ -228,7 +308,7 @@ export function DashboardScreen({ navigation }: Props) {
             {formatAmount(summary?.toSavings ?? 0, symbol)}
           </Text>
         </View>
-      </View>
+      </Wobble>
 
       {(billsDueSoon ?? []).length > 0 ? (
         <>
@@ -337,11 +417,17 @@ export function DashboardScreen({ navigation }: Props) {
               </Text>
             </View>
             <View className="mt-[11px]">
-              <Bar fraction={cat.allocated > 0 ? cat.spent / cat.allocated : 0} color={catOver ? colors.danger : cat.color} />
+              <Bar
+                fraction={
+                  (cat.allocated > 0 ? cat.spent / cat.allocated : 0) +
+                  (1 - (cat.allocated > 0 ? cat.spent / cat.allocated : 0)) * barMischief
+                }
+                color={catOver ? colors.danger : cat.color}
+              />
             </View>
             <View className="flex-row justify-between mt-2">
               <Text variant="mono" className="text-[10px] text-faint">
-                {formatAmount(cat.spent, symbol)} spent
+                {formatAmount(cat.spent + (cat.allocated - cat.spent) * barMischief, symbol)} spent
               </Text>
               <Text variant="mono" className="text-[10px] text-faint">
                 {formatAmount(cat.allocated, symbol)} budget

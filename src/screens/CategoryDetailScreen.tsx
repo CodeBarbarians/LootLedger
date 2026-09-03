@@ -1,10 +1,11 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { AddExpenseSheet } from '../components/app/AddExpenseSheet';
 import { Bar } from '../components/app/Bar';
 import { CategoryFormSheet } from '../components/app/CategoryFormSheet';
 import { Screen } from '../components/app/Screen';
+import { useScreenTour } from '../components/app/tour';
 import { Text } from '../components/app/Text';
 import type { Subcategory } from '../db/types';
 import { useCategoriesWithProgress } from '../hooks/useAggregates';
@@ -51,8 +52,20 @@ export function CategoryDetailScreen({ route, navigation }: Props) {
   const fraction = progress && progress.allocated > 0 ? progress.spent / progress.allocated : 0;
   const share = progress && profile ? (profile.salary_amount > 0 ? progress.allocated / profile.salary_amount : 0) : 0;
 
+  const summaryRef = useRef<View>(null);
+
+  const tour = useScreenTour(
+    'CategoryDetail',
+    useMemo(
+      () => [
+        { ref: summaryRef, text: 'What is left in this category this cycle, and how fast it is going.' },
+      ],
+      []
+    )
+  );
+
   return (
-    <Screen onBack={() => navigation.goBack()}>
+    <Screen tour={tour} onBack={() => navigation.goBack()}>
       <View className="flex-row items-center gap-2.5">
         <View className="h-2.5 w-2.5 rounded-[2px]" style={{ backgroundColor: category?.color ?? colors.accent }} />
         <Text style={{ fontSize: 24, lineHeight: 29, fontWeight: '700', letterSpacing: -0.2 }} className="font-heading">
@@ -60,7 +73,7 @@ export function CategoryDetailScreen({ route, navigation }: Props) {
         </Text>
       </View>
 
-      <View className="rounded-3xl border border-border bg-card p-5 mt-4">
+      <View ref={summaryRef} collapsable={false} className="rounded-3xl border border-border bg-card p-5 mt-4">
         <View className="flex-row justify-between items-end gap-2.5">
           <View>
             <Text variant="mono" className="text-[9px] tracking-widest text-faint">

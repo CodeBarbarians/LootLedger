@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { AddItemSheet } from '../components/app/AddItemSheet';
 import { CTAButton } from '../components/app/CTAButton';
@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../components/app/ConfirmDialog';
 import { DebtPaymentSheet } from '../components/app/DebtPaymentSheet';
 import { Pill } from '../components/app/Pill';
 import { Screen } from '../components/app/Screen';
+import { useScreenTour } from '../components/app/tour';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
 import { useToast } from '../components/app/Toast';
@@ -216,11 +217,23 @@ export function DebtsScreen({ navigation }: Props) {
     }));
   const projections = computePayoffProjections(activeDebts, Number(extraPayment || 0));
 
+  const extraRef = useRef<View>(null);
+
+  const tour = useScreenTour(
+    'Debts',
+    useMemo(
+      () => [
+        { ref: extraRef, text: 'Put anything spare in here and the payoff order below works out what it buys you.' },
+      ],
+      []
+    )
+  );
+
   return (
-    <Screen onBack={() => navigation.goBack()} topBarTitle="Debts" scroll={false}>
+    <Screen tour={tour} onBack={() => navigation.goBack()} topBarTitle="Debts" scroll={false}>
       <SectionLabel number="10" label="DEBTS" title="Plan the payoff" />
 
-      <View className="rounded-3xl border border-border bg-card px-5 pt-[18px] pb-[18px] mb-4">
+      <View ref={extraRef} collapsable={false} className="rounded-3xl border border-border bg-card px-5 pt-[18px] pb-[18px] mb-4">
         <Text variant="mono" className="text-[9px] tracking-widest text-faint">
           EXTRA PAYMENT PER MONTH · {symbol}
         </Text>

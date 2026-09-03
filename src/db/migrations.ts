@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { CREATE_TABLES_SQL } from './schema';
 
-const DB_VERSION = 10;
+const DB_VERSION = 11;
 
 // TEMP DIAGNOSTIC INSTRUMENTATION — remove once the blank-screen-on-launch bug is found.
 const diag = (msg: string) => console.log(`[migrateDb ${Date.now()}] ${msg}`);
@@ -407,6 +407,16 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     }
     diag(`v9->v10 done for ${profiles.length} profiles`);
     currentVersion = 10;
+  }
+
+  if (currentVersion === 10) {
+    diag('starting v10->v11 (per-screen tutorial tracking)');
+    // A JSON array of screen keys whose walkthrough has already played. Kept as
+    // one column rather than a table: it is a short, write-once-per-screen list
+    // that is always read whole.
+    await db.execAsync("ALTER TABLE settings ADD COLUMN tours_seen TEXT NOT NULL DEFAULT '[]'");
+    diag('v10->v11 done');
+    currentVersion = 11;
   }
 
   diag('final PRAGMA user_version bump, migration complete');

@@ -1,10 +1,11 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { CTAButton } from '../components/app/CTAButton';
 import { Pill } from '../components/app/Pill';
 import { Screen } from '../components/app/Screen';
+import { useScreenTour } from '../components/app/tour';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
 import { useToast } from '../components/app/Toast';
@@ -99,11 +100,23 @@ export function BudgetProfilesScreen({ navigation }: Props) {
 
   const canArchive = !!selected && !selected.archived && !isActive && activeCount > 1;
 
+  const splitRef = useRef<View>(null);
+
+  const tour = useScreenTour(
+    'BudgetProfiles',
+    useMemo(
+      () => [
+        { ref: splitRef, text: 'Each budget is its own world, with its own salary, categories and history. Pick one to switch or edit it.' },
+      ],
+      []
+    )
+  );
+
   return (
-    <Screen onBack={() => navigation.goBack()} topBarTitle="Budget profiles" scroll={false}>
+    <Screen tour={tour} onBack={() => navigation.goBack()} topBarTitle="Budget profiles" scroll={false}>
       <SectionLabel number="07" label="PROFILES" title="Manage budgets" />
 
-      <View style={{ flex: 1, flexDirection: 'row', gap: 12 }}>
+      <View ref={splitRef} collapsable={false} style={{ flex: 1, flexDirection: 'row', gap: 12 }}>
         {/* Sidebar */}
         <View style={{ width: 104 }}>
           <ScrollView showsVerticalScrollIndicator={false}>

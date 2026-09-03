@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS settings (
   active_profile_id INTEGER REFERENCES budget_profiles(id),
   last_backup_at TEXT,
   theme_mode TEXT NOT NULL DEFAULT 'dark',
-  biometric_lock_enabled INTEGER NOT NULL DEFAULT 0
+  biometric_lock_enabled INTEGER NOT NULL DEFAULT 0,
+  tours_seen TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS categories (

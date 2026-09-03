@@ -24,6 +24,8 @@ export interface Settings {
   last_backup_at: string | null;
   theme_mode: 'dark' | 'light';
   biometric_lock_enabled: number;
+  /** JSON array of screen keys whose walkthrough has already played. */
+  tours_seen: string;
 }
 
 export interface BudgetProfile {

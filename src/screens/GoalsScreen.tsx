@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { AddItemSheet } from '../components/app/AddItemSheet';
 import { Bar } from '../components/app/Bar';
@@ -7,6 +7,7 @@ import { CTAButton } from '../components/app/CTAButton';
 import { ConfirmDialog } from '../components/app/ConfirmDialog';
 import { GoalContributionSheet } from '../components/app/GoalContributionSheet';
 import { Screen } from '../components/app/Screen';
+import { useScreenTour } from '../components/app/tour';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
 import { useToast } from '../components/app/Toast';
@@ -138,11 +139,23 @@ export function GoalsScreen({ navigation }: Props) {
   const fraction = selected && selected.target_amount > 0 ? selected.contributed / selected.target_amount : 0;
   const reached = selected ? selected.contributed >= selected.target_amount && selected.target_amount > 0 : false;
 
+  const splitRef = useRef<View>(null);
+
+  const tour = useScreenTour(
+    'Goals',
+    useMemo(
+      () => [
+        { ref: splitRef, text: 'Something you are saving towards. Contribute to one and the bar on your dashboard follows.' },
+      ],
+      []
+    )
+  );
+
   return (
-    <Screen onBack={() => navigation.goBack()} topBarTitle="Goals" scroll={false}>
+    <Screen tour={tour} onBack={() => navigation.goBack()} topBarTitle="Goals" scroll={false}>
       <SectionLabel number="12" label="GOALS" title="Save toward something" />
 
-      <View style={{ flex: 1, flexDirection: 'row' }}>
+      <View ref={splitRef} collapsable={false} style={{ flex: 1, flexDirection: 'row' }}>
         {/* Sidebar */}
         <View style={{ width: 112 }}>
           <ScrollView showsVerticalScrollIndicator={false}>

@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { AddItemSheet } from '../components/app/AddItemSheet';
 import { Bar } from '../components/app/Bar';
@@ -8,6 +8,7 @@ import { ConfirmDialog } from '../components/app/ConfirmDialog';
 import { Pill } from '../components/app/Pill';
 import { Ring } from '../components/app/Ring';
 import { Screen } from '../components/app/Screen';
+import { useScreenTour } from '../components/app/tour';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { StatCell } from '../components/app/StatCell';
 import { Text } from '../components/app/Text';
@@ -152,11 +153,23 @@ export function AccountsScreen({ navigation }: Props) {
   const equityRatio = netWorth && netWorth.assets > 0 ? netWorth.netWorth / netWorth.assets : 0;
   const ringColor = (netWorth?.netWorth ?? 0) < 0 ? colors.danger : colors.accent;
 
+  const summaryRef = useRef<View>(null);
+
+  const tour = useScreenTour(
+    'Accounts',
+    useMemo(
+      () => [
+        { ref: summaryRef, text: 'Everything you own against everything you owe. This is the number that matters long term.' },
+      ],
+      []
+    )
+  );
+
   return (
-    <Screen onBack={() => navigation.goBack()} topBarTitle="Accounts" scroll={false}>
+    <Screen tour={tour} onBack={() => navigation.goBack()} topBarTitle="Accounts" scroll={false}>
       <SectionLabel number="09" label="ACCOUNTS" title="Track your net worth" />
 
-      <View className="rounded-3xl border border-border bg-card px-5 pt-[22px] pb-[18px] mb-4">
+      <View ref={summaryRef} collapsable={false} className="rounded-3xl border border-border bg-card px-5 pt-[22px] pb-[18px] mb-4">
         <View className="flex-row items-center gap-[18px]">
           <Ring
             fraction={equityRatio}

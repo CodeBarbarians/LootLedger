@@ -1,11 +1,12 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { AddItemSheet } from '../components/app/AddItemSheet';
 import { CTAButton } from '../components/app/CTAButton';
 import { ConfirmDialog } from '../components/app/ConfirmDialog';
 import { Pill } from '../components/app/Pill';
 import { Screen } from '../components/app/Screen';
+import { useScreenTour } from '../components/app/tour';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
 import { useToast } from '../components/app/Toast';
@@ -203,11 +204,23 @@ export function BillsScreen({ navigation }: Props) {
     show(selected.category_id != null ? 'Marked paid and logged as an expense' : 'Marked paid');
   }
 
+  const splitRef = useRef<View>(null);
+
+  const tour = useScreenTour(
+    'Bills',
+    useMemo(
+      () => [
+        { ref: splitRef, text: 'Every recurring bill on the left. Give one a due date and it turns up on your dashboard before it bites.' },
+      ],
+      []
+    )
+  );
+
   return (
-    <Screen onBack={() => navigation.goBack()} topBarTitle="Bills" scroll={false}>
+    <Screen tour={tour} onBack={() => navigation.goBack()} topBarTitle="Bills" scroll={false}>
       <SectionLabel number="11" label="BILLS" title="Never miss a due date" />
 
-      <View style={{ flex: 1, flexDirection: 'row' }}>
+      <View ref={splitRef} collapsable={false} style={{ flex: 1, flexDirection: 'row' }}>
         {/* Sidebar */}
         <View style={{ width: 112 }}>
           <ScrollView showsVerticalScrollIndicator={false}>

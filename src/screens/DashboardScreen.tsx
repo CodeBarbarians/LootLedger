@@ -15,6 +15,7 @@ import { Screen } from '../components/app/Screen';
 import { StatCell } from '../components/app/StatCell';
 import { Text } from '../components/app/Text';
 import { runThemeTransition } from '../components/app/themeTransition';
+import { useScreenTour, useTourRunning } from '../components/app/tour';
 import { useCategoriesWithProgress, usePeriodSummary } from '../hooks/useAggregates';
 import { useNetWorth } from '../hooks/useAccounts';
 import { useBillsDueSoon } from '../hooks/useBills';
@@ -47,10 +48,22 @@ export function DashboardScreen({ navigation }: Props) {
   // Driven by the brand mark when it is tapped: the heading beside it breaks
   // apart character by character and reassembles with the horns.
   const markNudge = useSharedValue(0);
-  // Play mode: the mark leaves its spot and roams, poking these as it lands.
+  // Play mode: the mark leaves its spot and roams, sizing these up and picking
+  // one to bother. Each is handed over as a ref rather than a position — the
+  // mascot measures them where they actually are, so the ones scrolled off
+  // screen simply stop being options.
   const [playing, setPlaying] = useState(false);
   const summaryNudge = useSharedValue(0);
   const tilesNudge = useSharedValue(0);
+  const headingRef = useRef<View>(null);
+  const summaryRef = useRef<View>(null);
+  const tilesRef = useRef<View>(null);
+  const ringRef = useRef<View>(null);
+  const categoriesRef = useRef<View>(null);
+  // The header's own logo slot. The mark is hidden here while it is out roaming or
+  // presenting, and the overlay copy starts from this exact spot — so what the
+  // user sees is the one logo leaving its place, not a second one appearing.
+  const markSlotRef = useRef<View>(null);
   // Purely presentational mischief: the mascot tugs a chart out of shape and the
   // numbers beside it follow, but nothing is written — the next render off real
   // data is unchanged.
@@ -97,23 +110,45 @@ export function DashboardScreen({ navigation }: Props) {
     };
   }, []);
 
+
   const ringMischief = mischiefKind === 'ring' ? mischief : 0;
   const barMischief = mischiefKind === 'bars' ? mischief : 0;
 
-  const spots = useMemo(
+  // `appeal` is the only steer given: the donut and the bars are the good gags,
+  // so it gravitates to them, but distance and novelty still get a say and the
+  // pick is never the same twice.
+  const targets = useMemo(
     () => [
-      { y: 0.06, nudge: markNudge, pull: { dx: 14, dy: 6 } },
-      { y: 0.3, nudge: summaryNudge, pull: { dx: 10, dy: -8 } },
-      { y: 0.55, nudge: tilesNudge, pull: { dx: 12, dy: 8 } },
+      { ref: headingRef, nudge: markNudge, pull: { dx: 14, dy: 6 }, appeal: 0.45 },
+      { ref: summaryRef, nudge: summaryNudge, pull: { dx: 10, dy: -8 }, appeal: 0.5 },
+      { ref: tilesRef, nudge: tilesNudge, pull: { dx: 12, dy: 8 }, appeal: 0.4 },
       // Hauls the donut down, and drags the category bars out to the right.
-      { y: 0.24, onArrive: () => playMischief('ring'), pull: { dx: -8, dy: 30 } },
-      { y: 0.74, onArrive: () => playMischief('bars'), pull: { dx: 38, dy: 0 } },
+      { ref: ringRef, onArrive: () => playMischief('ring'), pull: { dx: -8, dy: 30 }, appeal: 0.9 },
+      { ref: categoriesRef, onArrive: () => playMischief('bars'), pull: { dx: 38, dy: 0 }, appeal: 0.85 },
     ],
     // playMischief is stable enough for this — it only reads refs and setters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [markNudge, summaryNudge, tilesNudge]
   );
 
+
+  // Stands play mode down while a walkthrough is on: two marks on screen at once
+  // reads as a bug rather than a feature.
+  const tourRunning = useTourRunning();
+
+  const tour = useScreenTour(
+    'Dashboard',
+    useMemo(
+      () => [
+        { ref: headingRef, text: 'This is the cycle you are in. Everything below it is this month only.' },
+        { ref: ringRef, text: 'Budget left across every category. Watch it fall as the month goes.' },
+        { ref: summaryRef, text: 'Safe to spend is what is actually yours today, once every allotment is taken out.' },
+        { ref: tilesRef, text: 'Spent and put away so far this cycle.' },
+        { ref: categoriesRef, text: 'One card per category. Tap any of them for its full story.' },
+      ],
+      []
+    )
+  );
 
   function toggleTheme() {
     if (!settings) return;
@@ -160,7 +195,21 @@ export function DashboardScreen({ navigation }: Props) {
   const ringColor = over ? colors.danger : colors.accent;
 
   return (
-    <Screen overlay={<Mascot playing={playing} spots={spots} />}>
+    <Screen
+      tour={tour}
+      tourOrigin={markSlotRef}
+      overlay={
+        <Mascot
+          playing={playing && !tourRunning}
+          targets={targets}
+          origin={markSlotRef}
+          // Ten comebacks in, the black hole gets it. It walks back to the header
+          // and play mode ends with it — the mark is already in its slot by then,
+          // so this just puts the header's own logo back on screen.
+          onConcede={() => setPlaying(false)}
+        />
+      }
+    >
       <Pressable
         onPress={() => navigation.navigate('BudgetProfiles')}
         className="flex-row items-center gap-1.5 self-start mb-3 rounded-full border border-border-strong px-2.5 py-1.5 active:border-primary"
@@ -173,10 +222,14 @@ export function DashboardScreen({ navigation }: Props) {
 
       <View className="flex-row items-start justify-between gap-3 mb-5">
         <View className="flex-row items-center gap-2.5">
-          <View style={{ opacity: playing ? 0 : 1 }}>
+          <View
+            ref={markSlotRef}
+            collapsable={false}
+            style={{ opacity: playing || tourRunning ? 0 : 1 }}
+          >
             <BrandMark size={30} nudge={markNudge} />
           </View>
-          <View>
+          <View ref={headingRef} collapsable={false}>
             <ShatterText
               text={formatPeriodLabel(period.cycle_start_date).toUpperCase()}
               progress={markNudge}
@@ -227,14 +280,20 @@ export function DashboardScreen({ navigation }: Props) {
         </View>
       </View>
 
-      <Wobble progress={summaryNudge} className="rounded-3xl border border-border bg-card px-5 pt-[22px] pb-[18px]">
+      <Wobble
+        progress={summaryNudge}
+        viewRef={summaryRef}
+        className="rounded-3xl border border-border bg-card px-5 pt-[22px] pb-[18px]"
+      >
         <View className="flex-row items-center gap-[18px]">
-          <Ring
-            fraction={ringFraction * (1 - 0.85 * ringMischief)}
-            color={ringColor}
-            label={`${Math.round(Math.max(0, Math.min(1, ringFraction * (1 - 0.85 * ringMischief))) * 100)}%`}
-            sublabel="BUDGET LEFT"
-          />
+          <View ref={ringRef} collapsable={false}>
+            <Ring
+              fraction={ringFraction * (1 - 0.85 * ringMischief)}
+              color={ringColor}
+              label={`${Math.round(Math.max(0, Math.min(1, ringFraction * (1 - 0.85 * ringMischief))) * 100)}%`}
+              sublabel="BUDGET LEFT"
+            />
+          </View>
           <View className="flex-1 min-w-0">
             <Text variant="mono" className="text-[9px] tracking-[3px] text-faint">
               SAFE TO SPEND
@@ -291,7 +350,7 @@ export function DashboardScreen({ navigation }: Props) {
         </Pressable>
       </Wobble>
 
-      <Wobble progress={tilesNudge} className="flex-row gap-2.5 mt-3">
+      <Wobble progress={tilesNudge} viewRef={tilesRef} className="flex-row gap-2.5 mt-3">
         <View className="flex-1 rounded-[18px] border border-border bg-card px-4 py-3.5">
           <Text variant="mono" className="text-[9px] tracking-widest text-faint">
             SPENT
@@ -386,56 +445,58 @@ export function DashboardScreen({ navigation }: Props) {
         </Pressable>
       </View>
 
-      {(categories ?? []).map((cat) => {
-        const left = cat.remaining;
-        const catOver = left < -0.5;
-        const share = period.salary_amount > 0 ? cat.allocated / period.salary_amount : 0;
-        return (
-          <Pressable
-            key={cat.id}
-            onPress={() => navigation.navigate('CategoryDetail', { categoryId: cat.id, periodId: period.id })}
-            className="rounded-[20px] border border-border bg-card px-4 pt-[15px] pb-3.5 mb-2.5 active:border-border-strong"
-          >
-            <View className="flex-row items-center gap-2.5">
-              <View className="h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: cat.color }} />
-              <Text variant="subheading" className="flex-1" numberOfLines={1}>
-                {cat.name}
-              </Text>
-              <Text variant="mono" className="font-mono-bold text-[11px] text-faint">
-                {formatPercent(share)}
-              </Text>
-            </View>
-            <View className="flex-row items-baseline gap-1.5 mt-2.5">
-              <Text
-                style={{ fontSize: 20, lineHeight: 25, fontWeight: '700', letterSpacing: -0.2, color: catOver ? colors.danger : colors.textPrimary }}
-                className="font-heading"
-              >
-                {formatAmount(Math.abs(left), symbol)}
-              </Text>
-              <Text variant="mono" className="text-[10px] text-faint">
-                {catOver ? 'over budget' : 'pending'}
-              </Text>
-            </View>
-            <View className="mt-[11px]">
-              <Bar
-                fraction={
-                  (cat.allocated > 0 ? cat.spent / cat.allocated : 0) +
-                  (1 - (cat.allocated > 0 ? cat.spent / cat.allocated : 0)) * barMischief
-                }
-                color={catOver ? colors.danger : cat.color}
-              />
-            </View>
-            <View className="flex-row justify-between mt-2">
-              <Text variant="mono" className="text-[10px] text-faint">
-                {formatAmount(cat.spent + (cat.allocated - cat.spent) * barMischief, symbol)} spent
-              </Text>
-              <Text variant="mono" className="text-[10px] text-faint">
-                {formatAmount(cat.allocated, symbol)} budget
-              </Text>
-            </View>
-          </Pressable>
-        );
-      })}
+      <View ref={categoriesRef} collapsable={false}>
+        {(categories ?? []).map((cat) => {
+          const left = cat.remaining;
+          const catOver = left < -0.5;
+          const share = period.salary_amount > 0 ? cat.allocated / period.salary_amount : 0;
+          return (
+            <Pressable
+              key={cat.id}
+              onPress={() => navigation.navigate('CategoryDetail', { categoryId: cat.id, periodId: period.id })}
+              className="rounded-[20px] border border-border bg-card px-4 pt-[15px] pb-3.5 mb-2.5 active:border-border-strong"
+            >
+              <View className="flex-row items-center gap-2.5">
+                <View className="h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: cat.color }} />
+                <Text variant="subheading" className="flex-1" numberOfLines={1}>
+                  {cat.name}
+                </Text>
+                <Text variant="mono" className="font-mono-bold text-[11px] text-faint">
+                  {formatPercent(share)}
+                </Text>
+              </View>
+              <View className="flex-row items-baseline gap-1.5 mt-2.5">
+                <Text
+                  style={{ fontSize: 20, lineHeight: 25, fontWeight: '700', letterSpacing: -0.2, color: catOver ? colors.danger : colors.textPrimary }}
+                  className="font-heading"
+                >
+                  {formatAmount(Math.abs(left), symbol)}
+                </Text>
+                <Text variant="mono" className="text-[10px] text-faint">
+                  {catOver ? 'over budget' : 'pending'}
+                </Text>
+              </View>
+              <View className="mt-[11px]">
+                <Bar
+                  fraction={
+                    (cat.allocated > 0 ? cat.spent / cat.allocated : 0) +
+                    (1 - (cat.allocated > 0 ? cat.spent / cat.allocated : 0)) * barMischief
+                  }
+                  color={catOver ? colors.danger : cat.color}
+                />
+              </View>
+              <View className="flex-row justify-between mt-2">
+                <Text variant="mono" className="text-[10px] text-faint">
+                  {formatAmount(cat.spent + (cat.allocated - cat.spent) * barMischief, symbol)} spent
+                </Text>
+                <Text variant="mono" className="text-[10px] text-faint">
+                  {formatAmount(cat.allocated, symbol)} budget
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
 
       <DashedButton
         label="+ LOG AN EXPENSE"

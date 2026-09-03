@@ -1,6 +1,8 @@
 import { ScrollView, View } from 'react-native';
+import { useMemo, useRef } from 'react';
 import { CTAButton } from '../components/app/CTAButton';
 import { Screen } from '../components/app/Screen';
+import { useScreenTour } from '../components/app/tour';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
 import { useToast } from '../components/app/Toast';
@@ -53,14 +55,29 @@ export function DataScreen({ navigation }: Props) {
     }
   }
 
+  const actionsRef = useRef<View>(null);
+  const statsRef = useRef<View>(null);
+
+  const tour = useScreenTour(
+    'Data',
+    useMemo(
+      () => [
+        { ref: actionsRef, text: 'Export writes one file you can keep anywhere. Import puts it back and replaces what is here.' },
+        { ref: statsRef, text: 'When you last exported, and how much is riding on it.' },
+      ],
+      []
+    )
+  );
+
   return (
-    <Screen>
+    <Screen tour={tour}>
       <SectionLabel number="04" label="DATA" title="Backup & restore" />
       <Text variant="label" className="leading-5 -mt-2 mb-1">
         Everything lives on this device. Export writes a single JSON file you can keep anywhere;
         importing it replaces the current data.
       </Text>
 
+      <View ref={actionsRef} collapsable={false}>
       <CTAButton label="↓ EXPORT BACKUP FILE" className="mt-4" loading={exportBackup.isPending} onPress={handleExport} />
       <CTAButton
         label="↑ IMPORT BACKUP FILE"
@@ -69,8 +86,9 @@ export function DataScreen({ navigation }: Props) {
         loading={importBackup.isPending}
         onPress={handleImport}
       />
+      </View>
 
-      <View className="rounded-[20px] border border-border bg-card px-[18px] py-4 mt-4">
+      <View ref={statsRef} collapsable={false} className="rounded-[20px] border border-border bg-card px-[18px] py-4 mt-4">
         <View className="flex-row justify-between items-baseline">
           <Text variant="mono" className="text-[9px] tracking-widest text-faint">
             LAST EXPORT

@@ -1,7 +1,9 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useMemo, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import { Bar } from '../components/app/Bar';
 import { Screen } from '../components/app/Screen';
+import { useScreenTour } from '../components/app/tour';
 import { Text } from '../components/app/Text';
 import { useCategoriesWithProgress, usePeriodSummary } from '../hooks/useAggregates';
 import { useActiveProfile } from '../hooks/useProfiles';
@@ -25,8 +27,22 @@ export function HistoryDetailScreen({ route, navigation }: Props) {
   const saved = Math.max(0, summary.saved);
   const overCats = (categories ?? []).filter((c) => c.spent > c.allocated + 0.5);
 
+  const statsRef = useRef<View>(null);
+  const salaryRef = useRef<View>(null);
+
+  const tour = useScreenTour(
+    'HistoryDetail',
+    useMemo(
+      () => [
+        { ref: statsRef, text: 'How that month landed: what you kept, and what you went over.' },
+        { ref: salaryRef, text: 'The money that came in, against what actually went out.' },
+      ],
+      []
+    )
+  );
+
   return (
-    <Screen onBack={() => navigation.goBack()} topBarTitle="History">
+    <Screen tour={tour} onBack={() => navigation.goBack()} topBarTitle="History">
       <View className="flex-row items-center justify-between">
         <Text style={{ fontSize: 26, lineHeight: 32, fontWeight: '700', letterSpacing: -0.2 }} className="font-heading">
           {formatPeriodLabel(summary.period.cycle_start_date)}
@@ -38,7 +54,7 @@ export function HistoryDetailScreen({ route, navigation }: Props) {
         </Pressable>
       </View>
 
-      <View className="flex-row gap-2.5 mt-4">
+      <View ref={statsRef} collapsable={false} className="flex-row gap-2.5 mt-4">
         <View className="flex-1 rounded-[20px] border border-border bg-card p-4">
           <Text variant="mono" className="text-[9px] tracking-widest text-faint">
             SAVED
@@ -66,7 +82,7 @@ export function HistoryDetailScreen({ route, navigation }: Props) {
         </View>
       </View>
 
-      <View className="rounded-[20px] border border-border bg-card px-[18px] py-4 mt-2.5 flex-row justify-between">
+      <View ref={salaryRef} collapsable={false} className="rounded-[20px] border border-border bg-card px-[18px] py-4 mt-2.5 flex-row justify-between">
         <View>
           <Text variant="mono" className="text-[9px] tracking-widest text-faint">
             SALARY

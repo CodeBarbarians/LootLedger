@@ -1,6 +1,8 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useMemo, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import { Screen } from '../components/app/Screen';
+import { useScreenTour } from '../components/app/tour';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
 import type { RootStackParamList } from '../navigation/types';
@@ -44,12 +46,24 @@ function Row({
 
 export function MasterDataScreen({ navigation }: Props) {
   useThemeRepaint();
+  const listRef = useRef<View>(null);
+
+  const tour = useScreenTour(
+    'MasterData',
+    useMemo(
+      () => [
+        { ref: listRef, text: 'Everything the budget is built out of. Each row opens its own screen.' },
+      ],
+      []
+    )
+  );
+
   return (
-    <Screen onBack={() => navigation.goBack()} topBarTitle="Master data">
+    <Screen tour={tour} onBack={() => navigation.goBack()} topBarTitle="Master data">
       <SectionLabel number="08" label="MASTER DATA" title="Manage the basics" />
 
       {/* Each entity type below gets its own Row, navigating to its own management screen. */}
-      <View className="rounded-[20px] border border-border bg-card overflow-hidden">
+      <View ref={listRef} collapsable={false} className="rounded-[20px] border border-border bg-card overflow-hidden">
         <Row
           title="Categories"
           subtitle="Rename, recolor, retype, archive"

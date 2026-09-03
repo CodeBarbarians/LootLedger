@@ -1,11 +1,12 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { AddItemSheet } from '../components/app/AddItemSheet';
 import { CTAButton } from '../components/app/CTAButton';
 import { ConfirmDialog } from '../components/app/ConfirmDialog';
 import { Pill } from '../components/app/Pill';
 import { Screen } from '../components/app/Screen';
+import { useScreenTour } from '../components/app/tour';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
 import { useToast } from '../components/app/Toast';
@@ -109,11 +110,23 @@ export function CategoryManagementScreen({ navigation }: Props) {
     show('Category added');
   }
 
+  const splitRef = useRef<View>(null);
+
+  const tour = useScreenTour(
+    'CategoryManagement',
+    useMemo(
+      () => [
+        { ref: splitRef, text: 'Pick a category on the left, and everything about it is editable on the right.' },
+      ],
+      []
+    )
+  );
+
   return (
-    <Screen onBack={() => navigation.goBack()} topBarTitle="Categories" scroll={false}>
+    <Screen tour={tour} onBack={() => navigation.goBack()} topBarTitle="Categories" scroll={false}>
       <SectionLabel number="06" label="CATEGORIES" title="Manage categories" />
 
-      <View style={{ flex: 1, flexDirection: 'row' }}>
+      <View ref={splitRef} collapsable={false} style={{ flex: 1, flexDirection: 'row' }}>
         {/* Sidebar */}
         <View style={{ width: 104 }}>
           <ScrollView showsVerticalScrollIndicator={false}>

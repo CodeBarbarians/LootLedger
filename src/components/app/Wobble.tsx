@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+import type { ReactNode, RefObject } from 'react';
+import type { StyleProp, View, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
 /**
@@ -11,12 +11,15 @@ export function Wobble({
   strength = 1,
   className,
   style,
+  viewRef,
   children,
 }: {
   progress: SharedValue<number>;
   strength?: number;
   className?: string;
   style?: StyleProp<ViewStyle>;
+  /** Exposed so the mascot can measure where this ended up on screen. */
+  viewRef?: RefObject<View | null>;
   children: ReactNode;
 }) {
   const animatedStyle = useAnimatedStyle(() => ({
@@ -29,7 +32,12 @@ export function Wobble({
   }));
 
   return (
-    <Animated.View className={className} style={[style, animatedStyle]}>
+    <Animated.View
+      ref={viewRef as RefObject<Animated.View> | undefined}
+      collapsable={false}
+      className={className}
+      style={[style, animatedStyle]}
+    >
       {children}
     </Animated.View>
   );

@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import { Bar, SegmentedBar } from '../components/app/Bar';
 import { CTAButton } from '../components/app/CTAButton';
@@ -9,6 +9,7 @@ import { CategoryFormSheet } from '../components/app/CategoryFormSheet';
 import { DashedButton } from '../components/app/DashedButton';
 import { Pill } from '../components/app/Pill';
 import { Screen } from '../components/app/Screen';
+import { useScreenTour } from '../components/app/tour';
 import { SegmentedTabs } from '../components/app/SegmentedTabs';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
@@ -309,8 +310,20 @@ export function BudgetSetupScreen({ route, navigation }: Props) {
     }
   }
 
+  const rowsRef = useRef<View>(null);
+
+  const tour = useScreenTour(
+    'BudgetSetup',
+    useMemo(
+      () => [
+        { ref: rowsRef, text: 'One row per category. Split the salary between them however you like, and the bar above keeps you honest.' },
+      ],
+      []
+    )
+  );
+
   return (
-    <Screen onBack={isOnboarding ? undefined : () => navigation.goBack()}>
+    <Screen tour={tour} onBack={isOnboarding ? undefined : () => navigation.goBack()}>
       {isCreatingProfile ? (
         <View className="rounded-[22px] border border-border bg-card px-[18px] py-4 mb-3.5">
           <Text variant="mono" className="text-[9px] tracking-widest text-faint">
@@ -447,6 +460,7 @@ export function BudgetSetupScreen({ route, navigation }: Props) {
         </View>
       </View>
 
+      <View ref={rowsRef} collapsable={false}>
       {rows.map((row) => {
         const budgetValue =
           budgetMode === 'percent' ? ((parseFloat(row.percent) || 0) / 100) * salary : parseFloat(row.amount) || 0;
@@ -520,6 +534,7 @@ export function BudgetSetupScreen({ route, navigation }: Props) {
         );
       })}
 
+      </View>
       <DashedButton label="+ ADD CATEGORY" className="mt-3" onPress={() => setShowNewCategory(true)} />
 
       <CTAButton

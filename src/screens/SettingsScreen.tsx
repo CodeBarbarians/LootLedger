@@ -1,9 +1,10 @@
 import * as LocalAuthentication from 'expo-local-authentication';
-import { useRef, useState, type Ref } from 'react';
+import { useMemo, useRef, useState, type Ref } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 import { CTAButton } from '../components/app/CTAButton';
 import { ConfirmDialog } from '../components/app/ConfirmDialog';
 import { Screen } from '../components/app/Screen';
+import { useScreenTour } from '../components/app/tour';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
 import { runThemeTransition } from '../components/app/themeTransition';
@@ -84,6 +85,13 @@ export function SettingsScreen({ navigation }: Props) {
     runThemeTransition(themeRowRef, next, () => setThemeMode(next));
   }
 
+  // Clears the record of which walkthroughs have played, so each screen offers
+  // its own again the next time it is opened.
+  function replayTutorials() {
+    updateSettings.mutate({ tours_seen: '[]' });
+    show('Tutorials will play again');
+  }
+
   async function toggleBiometricLock() {
     if (!settings) return;
     const enabling = !settings.biometric_lock_enabled;
@@ -113,11 +121,27 @@ export function SettingsScreen({ navigation }: Props) {
     show('Default budget restored');
   }
 
+  const rulesRef = useRef<View>(null);
+  const navRef = useRef<View>(null);
+  const appRef = useRef<View>(null);
+
+  const tour = useScreenTour(
+    'Settings',
+    useMemo(
+      () => [
+        { ref: rulesRef, text: 'The rules your budget runs on. Salary and mode are the two that change the maths.' },
+        { ref: navRef, text: 'Switch between budgets, or manage the categories, accounts, debts, bills and goals behind them.' },
+        { ref: appRef, text: 'Theme and app lock. Replay tutorials is here too, if you want the walkthroughs back.' },
+      ],
+      []
+    )
+  );
+
   return (
-    <Screen>
+    <Screen tour={tour}>
       <SectionLabel number="05" label="SETTINGS" title="Rules" />
 
-      <View className="rounded-[20px] border border-border bg-card overflow-hidden">
+      <View ref={rulesRef} collapsable={false} className="rounded-[20px] border border-border bg-card overflow-hidden">
         <Row
           title="Currency"
           subtitle={profile?.currency_code === 'PKR' ? 'Pakistani Rupee' : profile?.currency_code ?? ''}
@@ -157,7 +181,7 @@ export function SettingsScreen({ navigation }: Props) {
         />
       </View>
 
-      <View className="rounded-[20px] border border-border bg-card overflow-hidden mt-4">
+      <View ref={navRef} collapsable={false} className="rounded-[20px] border border-border bg-card overflow-hidden mt-4">
         <Row
           title="Budget profiles"
           subtitle="Switch, rename, or add a budget"
@@ -175,7 +199,7 @@ export function SettingsScreen({ navigation }: Props) {
         />
       </View>
 
-      <View className="rounded-[20px] border border-border bg-card overflow-hidden mt-4">
+      <View ref={appRef} collapsable={false} className="rounded-[20px] border border-border bg-card overflow-hidden mt-4">
         <Row
           innerRef={themeRowRef}
           title="Theme"
@@ -190,6 +214,13 @@ export function SettingsScreen({ navigation }: Props) {
           value={settings?.biometric_lock_enabled ? 'ON' : 'OFF'}
           valueColor={settings?.biometric_lock_enabled ? colors.success : colors.textMuted}
           onPress={toggleBiometricLock}
+        />
+        <Row
+          title="Replay tutorials"
+          subtitle="Play every screen's walkthrough again"
+          value="RESET"
+          valueColor={colors.accent}
+          onPress={replayTutorials}
           last
         />
       </View>

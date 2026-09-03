@@ -1,6 +1,8 @@
 import { View } from 'react-native';
+import { useMemo, useRef } from 'react';
 import { HistoryCard } from '../components/app/HistoryCard';
 import { Screen } from '../components/app/Screen';
+import { useScreenTour } from '../components/app/tour';
 import { SectionLabel } from '../components/app/SectionLabel';
 import { Text } from '../components/app/Text';
 import { useHistoryTotals } from '../hooks/useAggregates';
@@ -19,11 +21,25 @@ export function HistoryScreen({ navigation }: Props) {
   const { data: totals } = useHistoryTotals(profile?.id);
   const symbol = profile?.currency_symbol ?? 'Rs';
 
+  const totalsRef = useRef<View>(null);
+  const listRef = useRef<View>(null);
+
+  const tour = useScreenTour(
+    'History',
+    useMemo(
+      () => [
+        { ref: totalsRef, text: 'Everything you have put away, and everything you went over, across all finished months.' },
+        { ref: listRef, text: 'One card per cycle you have closed. Tap any of them to see where its money went.' },
+      ],
+      []
+    )
+  );
+
   return (
-    <Screen>
+    <Screen tour={tour}>
       <SectionLabel number="03" label="HISTORY" title="Month by month" />
 
-      <View className="flex-row gap-2.5 mb-4">
+      <View ref={totalsRef} collapsable={false} className="flex-row gap-2.5 mb-4">
         <View className="flex-1 rounded-[18px] border border-border bg-card px-4 py-3.5">
           <Text variant="mono" className="text-[9px] tracking-widest text-faint">
             TOTAL SAVED
@@ -46,6 +62,7 @@ export function HistoryScreen({ navigation }: Props) {
         <Text variant="label">No past months yet — they&apos;ll show up here once a cycle ends.</Text>
       ) : null}
 
+      <View ref={listRef} collapsable={false}>
       {(periods ?? []).map((period) => (
         <HistoryCard
           key={period.id}
@@ -55,6 +72,7 @@ export function HistoryScreen({ navigation }: Props) {
           onPress={() => navigation.navigate('HistoryDetail', { periodId: period.id })}
         />
       ))}
+      </View>
     </Screen>
   );
 }

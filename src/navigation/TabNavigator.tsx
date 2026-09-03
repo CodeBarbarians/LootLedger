@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AccountsScreen } from '../screens/AccountsScreen';
 import { BillsScreen } from '../screens/BillsScreen';
 import { BudgetProfilesScreen } from '../screens/BudgetProfilesScreen';
@@ -22,6 +23,18 @@ import type { MainTabsParamList, RootStackParamList } from './types';
 
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+/**
+ * The bar's own content box, before the system's bottom inset is added on.
+ *
+ * This has to be added to the inset by hand: a numeric `height` in `tabBarStyle`
+ * is returned verbatim by the navigator's own `getTabBarHeight`, insets and all
+ * skipped, while it still pads the bar by `insets.bottom` underneath. A fixed
+ * height therefore has the system bar eat into the labels rather than sit below
+ * them — barely noticeable under gesture navigation's ~19dp, and enough to crush
+ * the row under three-button navigation's 48dp.
+ */
+const TAB_BAR_CONTENT_HEIGHT = 62;
 
 function TabDot({ focused }: { focused: boolean }) {
   return (
@@ -85,6 +98,7 @@ const MoreStack = () => <TabStack initialRouteName="Settings" />;
 
 export function TabNavigator() {
   useThemeRepaint();
+  const insets = useSafeAreaInsets();
   const { data: activeProfile } = useActiveProfile();
   const { data: currentPeriod } = useCurrentPeriod(activeProfile?.id, activeProfile?.cycle_start_day ?? 1);
 
@@ -95,9 +109,12 @@ export function TabNavigator() {
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: colors.background,
-          borderTopColor: colors.border,
-          height: 84,
+          // Lifted off the page rather than painted in the same colour as it:
+          // against the light theme's cream background the bar was the page, with
+          // only a faint hairline to say otherwise.
+          backgroundColor: colors.card,
+          borderTopColor: colors.borderStrong,
+          height: TAB_BAR_CONTENT_HEIGHT + insets.bottom,
           paddingTop: 11,
         },
         tabBarLabelStyle: {

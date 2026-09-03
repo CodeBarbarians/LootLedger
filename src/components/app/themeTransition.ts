@@ -27,6 +27,13 @@ export interface ThemeTransitionJob {
   incoming: [number, number, number];
   accent: [number, number, number];
   accentHex: string;
+  /**
+   * Which way the effect travels. Going to dark it runs outward — the dark swells
+   * out of the button and blasts past the edges; going to light it runs inward —
+   * the screen is eaten and the void then contracts to nothing. So the motion
+   * always agrees with what is arriving.
+   */
+  outward: boolean;
   onPeak: () => void;
   onDone: () => void;
 }
@@ -71,6 +78,25 @@ let snapshotTarget: RefObject<View | null> | null = null;
 let subscriber: ((job: ThemeTransitionJob | null) => void) | null = null;
 let running = false;
 let nextRunId = 1;
+
+/**
+ * Fires the instant the theme is swapped, for anything that wants to answer back
+ * to it. Deliberately a separate channel from `subscribeThemeTransition`, which
+ * is the overlay's single-owner line for driving the animation itself — this one
+ * fans out to however many listeners care.
+ */
+const flipListeners = new Set<() => void>();
+
+export function onThemeFlipped(listener: () => void) {
+  flipListeners.add(listener);
+  return () => {
+    flipListeners.delete(listener);
+  };
+}
+
+function notifyThemeFlipped() {
+  flipListeners.forEach((listener) => listener());
+}
 
 /** Registered by App.tsx — the view that gets snapshotted and animated. */
 export function setThemeTransitionTarget(ref: RefObject<View | null> | null) {
@@ -118,10 +144,17 @@ export async function runThemeTransition(
   // would capture the first animation mid-flight.
   if (running) return;
 
+  // Every path that switches the theme goes through here, so listeners hear about
+  // it whether or not the animation itself got off the ground.
+  const apply = () => {
+    applyTheme();
+    notifyThemeFlipped();
+  };
+
   const target = snapshotTarget;
   const publish = subscriber;
   if (!target || !publish) {
-    applyTheme();
+    apply();
     return;
   }
 
@@ -141,7 +174,7 @@ export async function runThemeTransition(
 
   if (!image || !container) {
     running = false;
-    applyTheme();
+    apply();
     return;
   }
 
@@ -174,7 +207,8 @@ export async function runThemeTransition(
     incoming: rgb(palette.background),
     accent: rgb(palette.accent),
     accentHex: palette.accent,
-    onPeak: applyTheme,
+    outward: toMode === 'dark',
+    onPeak: apply,
     onDone: finish,
   });
 }
